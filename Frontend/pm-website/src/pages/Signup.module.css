@@ -1,0 +1,134 @@
+/* SignupPersonal.css */
+
+/* Background Styling */
+.signupContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: url("https://png.pngtree.com/thumb_back/fh260/background/20241224/pngtree-motorbike-riders-riding-motorcycle-at-sunset-road-image_16856468.jpg") 
+  no-repeat center center/cover;
+  padding: 20px;
+}
+
+/* Signup Box - Glassmorphism Effect */
+.signupBox {
+  background: rgba(255, 255, 255, 0.25); /* Transparent effect */
+  backdrop-filter: blur(12px);
+  padding: 40px;
+  width: 100%;
+  max-width: 520px;
+  min-height: 650px;
+  text-align: center;
+  border-radius: 15px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Heading Style */
+h2 {
+  margin-bottom: 25px;
+  font-size: 30px;
+  color: white;
+  font-weight: bold;
+}
+
+/* Input Fields */
+/* Input Fields */
+.input {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  outline: none;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+/* Placeholder Text */
+.input::placeholder {
+  color: white;
+  opacity: 1; /* Ensures full opacity in Firefox */
+}
+
+/* Focus Effect */
+.input:focus {
+  border-color: #00aaff;
+  box-shadow: 0px 0px 10px rgba(0, 170, 255, 0.7);
+}
+
+/* Signup Button */
+.button {
+  width: 100%;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+}
+
+/* Button Hover Effect */
+.button:hover {
+  background: linear-gradient(135deg, #0056b3, #003f8c);
+  transform: scale(1.05);
+}
+
+/* Checkbox Styling */
+.checkboxContainer {
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkboxContainer input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #007bff;
+}
+
+.checkboxContainer label {
+  font-size: 16px;
+  cursor: pointer;
+  color: white;
+}
+
+/* Footer Links */
+.footerLinks {
+  margin-top: 25px;
+  font-size: 16px;
+}
+
+.footerLinks a {
+  color: #00aaff;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+.footerLinks a:hover {
+  text-decoration: underline;
+  color: #0056b3;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .signupBox {
+    width: 95%;
+    padding: 35px;
+    min-height: 700px;
+  }
+}

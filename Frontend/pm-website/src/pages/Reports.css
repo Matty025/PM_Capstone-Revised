@@ -1,0 +1,226 @@
+        /* Reports.css */
+
+        /* Reset and Base Styling */
+        * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html, #root, .dashboardContainers {
+        height: 100%;
+        background-color: #f9f9f9;
+        color: #222;
+        overflow-x: hidden;
+        }
+
+        .dashboardContainers {
+        display: flex;
+        flex-direction: row;
+        width: 100vw;
+        position: relative;
+        }
+
+        /* Hamburger Button */
+        .hamburger1 {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1100;
+        background-color: #e0e0e0;
+        border: none;
+        color: #333;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: background-color 0.3s ease;
+        }
+
+        .hamburger1:hover {
+        background-color: #d0f0d0;
+        }
+
+        /* Sidebar */
+        .dashboardSidebar {
+        position: fixed;
+        top: 0;
+        left: -250px;
+        width: 250px;
+        height: 100%;
+        background-color:   #029bd8;
+        border-right: 1px solid #ccc;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        transition: left 0.3s ease;
+        z-index: 1050;
+        }
+
+        .dashboardSidebar.open {
+        left: 0;
+        }
+
+        .closeBtn {
+        background: none;
+        border: none;
+        color: #333;
+        font-size: 24px;
+        align-self: flex-end;
+        cursor: pointer;
+        margin-bottom: 20px;
+        }
+
+        .dashboardSidebar button {
+        background-color: #ffffff;
+        border: 2px solid #4caf50;
+        color: #000000;
+        padding: 10px 12px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        text-align: left;
+        transition: all 0.3s ease;
+        }
+
+        .dashboardSidebar button:hover {
+        background-color: #4caf50;
+        color: #fff;
+        }
+
+        /* Main Content */
+        .dashboardContent {
+        margin-left: 0;
+        padding: 50px 40px 40px 40px;
+        width: 100%;
+        overflow-y: auto;
+        transition: margin-left 0.3s ease;
+        min-height: 100vh;
+        }
+
+        .dashboardSidebar.open ~ .dashboardContent {
+        margin-left: 250px;
+        }
+
+        .dashboardContent h2 {
+        color: #333;
+        margin-bottom: 30px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        }
+
+        /* Report Sections */
+        .reportsContainer {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        }
+
+        .reportSections {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        }
+
+        .reportItem {
+        background-color: #ffffff;
+        padding: 20px 25px;
+        border-radius: 10px;
+        flex: 1 1 300px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        color: #333;
+        }
+
+        .reportItem h3 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        text-align: center;
+        }
+
+        .reportItem ul {
+        list-style: none;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1.6;
+        }
+
+        .reportItem li {
+        margin-bottom: 8px;
+        }
+
+        /* Profile */
+        .profileBtn {
+        background-color: transparent;
+        border: none;
+        padding: 10px 0;
+        margin-bottom: 20px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.2s ease;
+        }
+
+        .profileBtn:hover {
+        transform: scale(1.05);
+        }
+
+        .profileImage {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #4caf50;
+        }
+
+        .profileLabel {
+        color: #333;
+        margin-top: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        }
+
+        /* Backdrop */
+        .backdrop.visible {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.3);
+        z-index: 1040;
+        }
+
+        /* Scrollbar Customization */
+        .dashboardContent::-webkit-scrollbar {
+        width: 8px;
+        }
+
+        .dashboardContent::-webkit-scrollbar-track {
+        background: #eee;
+        }
+
+        .dashboardContent::-webkit-scrollbar-thumb {
+        background-color: #bbb;
+        border-radius: 4px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+        .dashboardContent {
+            padding: 40px 20px 20px 20px;
+        }
+
+        .reportSections {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dashboardSidebar {
+            width: 220px;
+        }
+
+        .dashboardSidebar.open ~ .dashboardContent {
+            margin-left: 220px;
+        }
+        }

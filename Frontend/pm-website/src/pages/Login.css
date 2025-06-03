@@ -1,0 +1,175 @@
+.login-container {
+  display: flex;
+  height: 100vh;
+}
+
+.left-section {
+  flex: 1;
+  background: url("https://png.pngtree.com/thumb_back/fh260/background/20241224/pngtree-motorbike-riders-riding-motorcycle-at-sunset-road-image_16856468.jpg") 
+    no-repeat center center/cover;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.left-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.left-section h1, .left-section h3 {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.left-section h1 {
+  font-size: 32px;
+  font-weight: bold;
+  background: linear-gradient(45deg, #ffffff, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.left-section h3 {
+  font-size: 18px;
+  background: linear-gradient(45deg, #ffffff, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Right Section - Login Form */
+.right-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+/* Login Form */
+.login-form {
+  background: #f9f9f9;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  width: 100%;
+  max-width: 350px;
+}
+
+.login-form h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: 0.3s ease-in-out;
+  background: #fff;
+  color: #333;
+}
+
+.login-form input:focus {
+  border-color: #007bff;
+  box-shadow: 0px 0px 8px rgba(0, 123, 255, 0.5);
+}
+
+.login-form button {
+  width: 50%;
+  padding: 12px;
+  border: none;
+  background: #007bff;
+  color: white;
+  font-size: 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+  display: block;
+  margin-left: 85px;
+}
+
+.login-form button:hover {
+  background: #0056b3;
+}
+
+.login-form p {
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.login-form a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.login-form a:hover {
+  text-decoration: underline;
+}
+
+/* ✅ Responsive Design for Mobile Devices */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .left-section {
+    flex: none;
+    height: 40vh;
+    padding: 15px;
+  }
+
+  .left-section h1 {
+    font-size: 24px;
+  }
+
+  .left-section h3 {
+    font-size: 14px;
+  }
+
+  .right-section {
+    flex: none;
+    height: 60vh;
+    padding: 20px;
+  }
+
+  .login-form {
+    width: 90%;
+    max-width: 320px;
+    padding: 30px;
+  }
+
+  .login-form h2 {
+    font-size: 20px;
+  }
+
+  .login-form input {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .login-form button {
+    width: 50%;
+    font-size: 16px;
+  }
+}
