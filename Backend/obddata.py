@@ -16,11 +16,9 @@ MQTT_TOPIC = "obd/data"
 
 # InfluxDB settings - update these with your real values
 INFLUXDB_URL = "http://localhost:8086"
-INFLUXDB_TOKEN = "y2gPcpacMB5yTLjeEuYVe7lR2AWjN_3p9R29XsHWYkuozvV-TzzJVi5u8Z1G3YwtXXPQBXOXaYc8fM1-wWOfzw==  "
+INFLUXDB_TOKEN = "y2gPcpacMB5yTLjeEuYVe7lR2AWjN_3p9R29XsHWYkuozvV-TzzJVi5u8Z1G3YwtXXPQBXOXaYc8fM1-wWOfzw=="
 INFLUXDB_ORG = "MotorcycleMaintenance"
 INFLUXDB_BUCKET = "MotorcycleOBDData"
-
-
 
 # Get motorcycle_id from command line argument (optional)
 if len(sys.argv) < 2:
@@ -48,22 +46,17 @@ influx_client = InfluxDBClient(
 write_api = influx_client.write_api(write_options=WriteOptions(batch_size=1))
 
 def write_to_influxdb(obd_data, motorcycle_id):
+    point = Point("obd_data").tag("motorcycle_id", motorcycle_id)
     for cmd, value in obd_data.items():
         if value is not None:
             try:
                 val_float = float(value)
+                point = point.field(cmd.lower(), val_float)  # e.g., rpm=1200
             except (ValueError, TypeError):
                 print(f"[WARNING] Could not convert value to float for {cmd}: {value}")
                 continue
-
-            point = (
-                Point("obd_data")
-                .tag("motorcycle_id", motorcycle_id)
-                .tag("command", cmd)
-                .field("value", val_float)
-            )
-            write_api.write(bucket=INFLUXDB_BUCKET, record=point)
-            print(f"[InfluxDB] Wrote {cmd} = {val_float}")
+    write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+    print(f"[InfluxDB] Wrote: {obd_data}")
 
 port = "COM4"  # Change this as needed
 print(f"Attempting to connect to OBD-II device on {port}...")
@@ -74,11 +67,17 @@ try:
     if connection.is_connected():
         print(f"Successfully connected to vehicle on {port}!")
 
+        # Check LONG_FUEL_TRIM_1 support
+        if not connection.supports(obd.commands.LONG_FUEL_TRIM_1):
+            print("[WARNING] LONG_FUEL_TRIM_1 PID not supported by this vehicle or adapter.")
+
         commands = [
             obd.commands.RPM,
             obd.commands.COOLANT_TEMP,
-            obd.commands.SPEED,
-            obd.commands.ELM_VOLTAGE
+            obd.commands.ENGINE_LOAD,
+            obd.commands.ELM_VOLTAGE,
+            obd.commands.THROTTLE_POS,
+            obd.commands.LONG_FUEL_TRIM_1
         ]
 
         last_write_time = time.time()
@@ -92,13 +91,21 @@ try:
                 obd_data = {}
                 for cmd in commands:
                     response = connection.query(cmd)
-                    value = response.value.magnitude if response.value is not None else None
+
+                    if response.is_null():
+                        print(f"[DEBUG] {cmd.name} returned no data (null).")
+                        value = None
+                    else:
+                        value = response.value.magnitude if response.value is not None else None
+                        if value is not None:
+                            value = round(float(value), 2)
                     obd_data[cmd.name] = value
 
-                # Add motorcycle_id to the published data
+                # Remove null values from payload to avoid sending them over MQTT
+                payload_data = {k: v for k, v in obd_data.items() if v is not None}
                 payload = {
                     "motorcycle_id": MOTORCYCLE_ID,
-                    "data": obd_data
+                    "data": payload_data
                 }
 
                 mqtt_client.publish(MQTT_TOPIC, json.dumps(payload))

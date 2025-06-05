@@ -29,18 +29,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [motorcycle, setMotorcycle] = useState(null);
+
+  // Add ENGINE_LOAD and use key names matching MQTT payload exactly
   const [obdData, setObdData] = useState({
     RPM: 0,
     COOLANT_TEMP: 0,
-    SPEED: 0,
     ELM_VOLTAGE: 0,
+    ENGINE_LOAD: 0,
+    THROTTLE_POS: 0,
+    LONG_TERM_FUEL_TRIM: 0, // <- this is ltfl
   });
 
+  // Include ENGINE_LOAD and THROTTLE_POS keys here as well
   const [chartData, setChartData] = useState({
     RPM: { labels: [], data: [] },
     COOLANT_TEMP: { labels: [], data: [] },
-    SPEED: { labels: [], data: [] },
     ELM_VOLTAGE: { labels: [], data: [] },
+    ENGINE_LOAD: { labels: [], data: [] },
+    THROTTLE_POS: { labels: [], data: [] },
+    LONG_TERM_FUEL_TRIM: { labels: [], data: [] }, // <- this is the chart
+
   });
 
   useEffect(() => {
@@ -59,20 +67,29 @@ const Dashboard = () => {
     setChartData((prevData) => ({
       RPM: {
         labels: [...prevData.RPM.labels, newTime].slice(-20),
-        data: [...prevData.RPM.data, data.RPM || 0].slice(-20),
+        data: [...prevData.RPM.data, Number(data.RPM || 0).toFixed(2)].slice(-20),
       },
       COOLANT_TEMP: {
         labels: [...prevData.COOLANT_TEMP.labels, newTime].slice(-20),
-        data: [...prevData.COOLANT_TEMP.data, data.COOLANT_TEMP || 0].slice(-20),
-      },
-      SPEED: {
-        labels: [...prevData.SPEED.labels, newTime].slice(-20),
-        data: [...prevData.SPEED.data, data.SPEED || 0].slice(-20),
+        data: [...prevData.COOLANT_TEMP.data, Number(data.COOLANT_TEMP || 0).toFixed(2)].slice(-20),
       },
       ELM_VOLTAGE: {
         labels: [...prevData.ELM_VOLTAGE.labels, newTime].slice(-20),
-        data: [...prevData.ELM_VOLTAGE.data, data.ELM_VOLTAGE || 0].slice(-20),
+        data: [...prevData.ELM_VOLTAGE.data, Number(data.ELM_VOLTAGE || 0).toFixed(2)].slice(-20),
       },
+      ENGINE_LOAD: {
+        labels: [...prevData.ENGINE_LOAD.labels, newTime].slice(-20),
+        data: [...prevData.ENGINE_LOAD.data, Number(data.ENGINE_LOAD || 0).toFixed(2)].slice(-20),
+      },
+      THROTTLE_POS: {
+        labels: [...prevData.THROTTLE_POS.labels, newTime].slice(-20),
+        data: [...prevData.THROTTLE_POS.data, Number(data.THROTTLE_POS || 0).toFixed(2)].slice(-20),
+      },
+      LONG_TERM_FUEL_TRIM: {
+         labels: [...prevData.LONG_TERM_FUEL_TRIM.labels, newTime].slice(-20),
+         data: [...prevData.LONG_TERM_FUEL_TRIM.data, Number(data.LONG_TERM_FUEL_TRIM || 0).toFixed(2)].slice(-20),
+      },
+
     }));
   }, []);
 
@@ -96,16 +113,19 @@ const Dashboard = () => {
           const payload = JSON.parse(rawMessage);
           console.log("Parsed payload:", payload);
 
-          // Ensure motorcycle_id matches your selected motorcycle (string comparison)
           if (payload.motorcycle_id === String(motorcycle?.id)) {
             const data = payload.data || {};
 
+            // Match exact keys from MQTT data
             const normalizedData = {
-              RPM: data.RPM || 0,
-              COOLANT_TEMP: data.COOLANT_TEMP || 0,
-              SPEED: data.SPEED || 0,
-              ELM_VOLTAGE: data.ELM_VOLTAGE || 0,
-            };
+           RPM: data.RPM || 0,
+          COOLANT_TEMP: data.COOLANT_TEMP || 0,
+          ELM_VOLTAGE: data.ELM_VOLTAGE || 0,
+          ENGINE_LOAD: data.ENGINE_LOAD || 0,
+          THROTTLE_POS: data.THROTTLE_POS ?? 0,
+          LONG_TERM_FUEL_TRIM: data.LONG_FUEL_TRIM_1 ?? 0, // <-- map it here
+};
+
 
             setObdData(normalizedData);
             updateChartData(normalizedData);
@@ -147,7 +167,7 @@ const Dashboard = () => {
   };
 
   const renderChart = (label, key) => (
-    <div className="chartBox">
+    <div className="chartBox" key={key}>
       <h3>{label}</h3>
       <Line
         data={{
@@ -174,55 +194,61 @@ const Dashboard = () => {
   return (
     <div className="dashboardContainer">
       <button
-  className={`hamburger ${sidebarOpen ? "hide" : ""}`}
-  onClick={() => setSidebarOpen(true)}
->
-  ☰
-</button>
+        className={`hamburger ${sidebarOpen ? "hide" : ""}`}
+        onClick={() => setSidebarOpen(true)}
+      >
+        ☰
+      </button>
 
       <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-  <button className="closeBtn" onClick={() => setSidebarOpen(false)}>
-    ✖
-  </button>
+        <button className="closeBtn" onClick={() => setSidebarOpen(false)}>
+          ✖
+        </button>
 
-  <button className="profileBtn" onClick={() => navigate("/profile")}>
-  <img 
-    src="https://static.vecteezy.com/system/resources/previews/025/267/725/non_2x/portrait-of-a-man-wearing-a-motocross-rider-helmet-and-wearing-a-sweater-side-view-suitable-for-avatar-social-media-profile-print-etc-flat-graphic-vector.jpg   " 
-    alt="Profile" 
-    className="profileImage" 
-  />
-  <h3 className="profileLabel">Profile</h3>
-</button>
+        <button className="profileBtn" onClick={() => navigate("/profile")}>
+          <img
+            src="https://static.vecteezy.com/system/resources/previews/025/267/725/non_2x/portrait-of-a-man-wearing-a-motocross-rider-helmet-and-wearing-a-sweater-side-view-suitable-for-avatar-social-media-profile-print-etc-flat-graphic-vector.jpg"
+            alt="Profile"
+            className="profileImage"
+          />
+          <h3 className="profileLabel">Profile</h3>
+        </button>
 
-  <button onClick={() => navigate("/dashboard")}>Dashboard</button>
-  <button onClick={() => navigate("/Reports")}>Reports</button>
-  <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
-  <button onClick={() => navigate("/alerts")}>Alerts</button>
-  <button onClick={() => navigate("/Settings")}>Settings</button>
-  <button onClick={handleLogout}>Logout</button>
-</div>
-
+        <button onClick={() => navigate("/dashboard")}>Dashboard</button>
+        <button onClick={() => navigate("/Reports")}>Reports</button>
+        <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
+        <button onClick={() => navigate("/alerts")}>Alerts</button>
+        <button onClick={() => navigate("/Settings")}>Settings</button>
+        <button onClick={handleLogout}>Logout</button>
+      </div>
 
       <div className="dashboardContent">
         <h1>OBD Real-Time Dashboard</h1>
 
         <div className="buttonGroup">
           <button onClick={handleStartOBD}>Start OBD</button>
-          <button onClick={handleStopOBD}>Stop OBD</button>
+          <button onClick={handleStopOBD} style={{ backgroundColor: "red" }}>
+            Stop OBD
+          </button>
         </div>
 
         <div className="currentValues">
-          <div className="valueCard">RPM: {obdData.RPM}</div>
-          <div className="valueCard">Speed: {obdData.SPEED} km/h</div>
-          <div className="valueCard">Coolant: {obdData.COOLANT_TEMP} °C</div>
-          <div className="valueCard">Voltage: {obdData.ELM_VOLTAGE} V</div>
+          <div className="valueCard">RPM: {Number(obdData.RPM).toFixed(2)}</div>
+          <div className="valueCard">Coolant: {Number(obdData.COOLANT_TEMP).toFixed(2)} °C</div>
+          <div className="valueCard">Voltage: {Number(obdData.ELM_VOLTAGE).toFixed(2)} V</div>
+          <div className="valueCard">Throttle Position: {Number(obdData.THROTTLE_POS).toFixed(2)} %</div>
+          <div className="valueCard">Engine Load: {Number(obdData.ENGINE_LOAD).toFixed(2)} %</div>
+          <div className="valueCard">Long Term Fuel Trim: {Number(obdData.LONG_TERM_FUEL_TRIM).toFixed(2)} %</div>
         </div>
 
         <div className="chartGrid">
           {renderChart("RPM", "RPM")}
-          {renderChart("Speed", "SPEED")}
           {renderChart("Coolant Temp", "COOLANT_TEMP")}
           {renderChart("Voltage", "ELM_VOLTAGE")}
+          {renderChart("Throttle Position", "THROTTLE_POS")}
+          {renderChart("Engine Load", "ENGINE_LOAD")}
+          {renderChart("Long Term Fuel Trim", "LONG_TERM_FUEL_TRIM")}
+
         </div>
       </div>
     </div>
