@@ -57,9 +57,11 @@ function SignupMotorcycle() {
   }, [navigate]);
 
   const handleSelectMotorcycle = (motorcycle) => {
-    localStorage.setItem("selectedMotorcycle", JSON.stringify(motorcycle));
-    navigate("/dashboard");
-  };
+  console.log("Selected motorcycle before saving:", motorcycle);
+  localStorage.setItem("selectedMotorcycle", JSON.stringify(motorcycle));
+  navigate("/dashboard");
+};
+
 
   const handleChange = (e) => {
     setMotorcycleData({ ...motorcycleData, [e.target.name]: e.target.value });
