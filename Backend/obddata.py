@@ -10,13 +10,13 @@ from influxdb_client import InfluxDBClient, Point, WriteOptions
 obd.logger.setLevel(obd.logging.DEBUG)
 
 # MQTT broker settings
-MQTT_BROKER = "test.mosquitto.org"
+MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 MQTT_TOPIC = "obd/data"
 
 # InfluxDB settings - update these with your real values
 INFLUXDB_URL = "http://localhost:8086"
-INFLUXDB_TOKEN = "y2gPcpacMB5yTLjeEuYVe7lR2AWjN_3p9R29XsHWYkuozvV-TzzJVi5u8Z1G3YwtXXPQBXOXaYc8fM1-wWOfzw=="
+INFLUXDB_TOKEN = "rLaEXQUWJ2R71NQIEFVfhw18L9xC4knKBf7bPAymrJtz6nukc5NIfPPdoc2dlk0c8n_gGm6kiwi7aDAl-uCmWA=="
 INFLUXDB_ORG = "MotorcycleMaintenance"
 INFLUXDB_BUCKET = "MotorcycleOBDData"
 

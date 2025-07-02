@@ -1,28 +1,70 @@
-"""
-anomaly_model.py
-────────────────
- • One generic entry‑point  →  detect_anomalies(motorcycle_id, brand, mode='idle')
- • Each brand / mode has its own model file:  <brand>/<mode>.pkl
- • <mode>.pkl is expected to be a dict  {"model": fitted_model, "scaler": fitted_scaler}
-"""
-
 import os
 import joblib
 import numpy as np
 import pandas as pd
-from functools   import lru_cache
+from functools import lru_cache
 from influxdb_client import InfluxDBClient
+import json
 
+# ───────────────────────── Load Normal Range JSON ─────────────────────────
+with open("normal_ranges.json") as f:
+    NORMAL_RANGES = json.load(f)
 
-# ──────────────────────────────────────────────────────────
-# InfluxDB configuration (adjust if needed)
-# ──────────────────────────────────────────────────────────
-INFLUXDB_URL    = "http://localhost:8086"
-INFLUXDB_TOKEN  = "y2gPcpacMB5yTLjeEuYVe7lR2AWjN_3p9R29XsHWYkuozvV-TzzJVi5u8Z1G3YwtXXPQBXOXaYc8fM1-wWOfzw=="
-INFLUXDB_ORG    = "MotorcycleMaintenance"
+def normalize(text):
+    return str(text).strip().lower().replace(" ", "_")
+
+def classify_value(feature, value, brand, model):
+    try:
+        brand = normalize(brand)
+        model = normalize(model)
+        ranges = NORMAL_RANGES[brand][model][feature]
+
+        if value <= ranges["critical_min"] or value >= ranges["critical_max"]:
+            return "critical"
+        elif value <= ranges["warning_min"] or value >= ranges["warning_max"]:
+            return "warning"
+        else:
+            return "normal"
+    except Exception as e:
+        print(f"[classify_value] ⚠️ Missing reference or error for {brand} → {model} → {feature} → {e}")
+        return "unknown"
+
+def compute_severity_score(feature, value, brand, model):
+    try:
+        brand = normalize(brand)
+        model = normalize(model)
+        ranges = NORMAL_RANGES[brand][model][feature]
+
+        normal_min = ranges["warning_min"]
+        normal_max = ranges["warning_max"]
+        critical_min = ranges["critical_min"]
+        critical_max = ranges["critical_max"]
+
+        if normal_min <= value <= normal_max:
+            return 0
+
+        if value < normal_min:
+            score = (normal_min - value) / (normal_min - critical_min)
+        elif value > normal_max:
+            score = (value - normal_max) / (critical_max - normal_max)
+        else:
+            score = 0
+
+        return int(min(max(score * 100, 0), 100))
+
+    except Exception as e:
+        print(f"[severity_score] ⚠️ Cannot compute severity score for {feature}: {e}")
+        return -1
+
+# ───────────────────────── InfluxDB Config ─────────────────────────
+# InfluxDB settings - update these with your real values
+INFLUXDB_URL = "http://localhost:8086"
+INFLUXDB_TOKEN = "rLaEXQUWJ2R71NQIEFVfhw18L9xC4knKBf7bPAymrJtz6nukc5NIfPPdoc2dlk0c8n_gGm6kiwi7aDAl-uCmWA=="
+INFLUXDB_ORG = "MotorcycleMaintenance"
 INFLUXDB_BUCKET = "MotorcycleOBDData"
 
-# Feature order used during training ── keep consistent
+MODEL_BASE_DIR = "models"
+
 FEATURES = [
     "rpm",
     "engine_load",
@@ -32,119 +74,176 @@ FEATURES = [
     "elm_voltage",
 ]
 
-# ──────────────────────────────────────────────────────────
-# Helper: fetch & tidy a recent window from InfluxDB
-# ──────────────────────────────────────────────────────────
+SENSOR_SUGGESTIONS = {
+    "rpm": ("Engine revolutions per minute.",
+            "RPM too high – possible vacuum leak, idle control valve issue, or throttle problem.",
+            "RPM too low – possible spark plug, injector, or air intake issue."),
+    "engine_load": ("Engine load (how hard the engine is working).",
+                    "Engine load high – may indicate restricted air filter, MAF sensor issue, or engine misfire.",
+                    "Engine load low – could be sensor error or idle control system fault."),
+    "throttle_pos": ("Throttle position sensor (TPS) angle.",
+                    "Throttle too open at idle – TPS miscalibration or stuck throttle.",
+                    "Throttle stuck closed – TPS issue or throttle body obstruction."),
+    "long_fuel_trim_1": ("Long-term fuel trim adjustment by ECU.",
+                        "Positive fuel trim – may suggest vacuum leak or fuel pressure too low.",
+                        "Negative fuel trim – engine running rich, possibly due to leaky injector or O₂ sensor fault."),
+    "coolant_temp": ("Engine coolant temperature in Celsius.",
+                    "Coolant temperature too high – potential overheating, low coolant, or stuck thermostat.",
+                    "Coolant temperature too low – thermostat may be stuck open or sensor faulty."),
+    "elm_voltage": ("Vehicle battery and charging system voltage.",
+                    "Voltage too high – possible regulator/rectifier or alternator issue.",
+                    "Voltage too low – weak battery, alternator problem, or electrical drain."),
+}
+
+@lru_cache(maxsize=None)
+def _load_model(brand: str, moto_id: str, mode="idle"):
+    brand = normalize(brand)
+    path = os.path.join(MODEL_BASE_DIR, brand, f"{mode}_{moto_id}.pkl")
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    bundle = joblib.load(path)
+    if not {"model", "scaler"} <= bundle.keys():
+        raise ValueError(f"{path} missing model/scaler keys")
+    return bundle["model"], bundle["scaler"]
+
 def _get_window_df(motorcycle_id: str, minutes: int = 30) -> pd.DataFrame:
     flux = f"""
     from(bucket: "{INFLUXDB_BUCKET}")
       |> range(start: -{minutes}m)
-      |> filter(fn:(r)=>r._measurement == "obd_data")
-      |> filter(fn:(r)=>r.motorcycle_id == "{motorcycle_id}")
-      |> filter(fn:(r)=>r._field == "rpm"
-                    or r._field == "engine_load"
-                    or r._field == "throttle_pos"
-                    or r._field == "long_fuel_trim_1"
-                    or r._field == "coolant_temp"
-                    or r._field == "elm_voltage")
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-      |> keep(columns: ["_time"] + [{', '.join(f'"{f}"' for f in FEATURES)}])
+      |> filter(fn: (r) => r._measurement == "obd_data")
+      |> filter(fn: (r) => r.motorcycle_id == "{motorcycle_id}")
+      |> filter(fn: (r) => { " or ".join([f'r._field == "{f}"' for f in FEATURES]) })
+      |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> keep(columns: [{', '.join([f'"{f}"' for f in ["_time"] + FEATURES]) }])
     """
 
-    client    = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
-    query_api = client.query_api()
-    df        = query_api.query_data_frame(flux)
-
+    client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
+    df = client.query_api().query_data_frame(flux)
     client.close()
-
     if df.empty:
         return pd.DataFrame()
-
-    df = df.drop(columns=["result", "table"], errors="ignore")
-    df = df.dropna().sort_values("_time").reset_index(drop=True)
+    df = df.drop(columns=["result", "table"], errors="ignore").dropna().sort_values("_time").reset_index(drop=True)
     return df
 
-
-# ──────────────────────────────────────────────────────────
-# Helper: cache model/scaler objects so we load each file once
-# ──────────────────────────────────────────────────────────
-@lru_cache(maxsize=None)
-def _load_model(brand: str, mode: str = "idle"):
-    path = os.path.join(brand, f"{mode}.pkl")
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Model file not found: {path}")
-
-    data = joblib.load(path)
-    if not isinstance(data, dict) or "model" not in data or "scaler" not in data:
-        raise ValueError(f"{path} does not contain the expected keys {{'model','scaler'}}")
-
-    return data["model"], data["scaler"]
-
-
-# ──────────────────────────────────────────────────────────
-# Main entry‑point
-# ──────────────────────────────────────────────────────────
-def detect_anomalies(motorcycle_id: str, brand: str, mode: str = "idle", minutes: int = 30):
-    """
-    Returns a dict ready to JSON‑dump:
-      {
-        status, motorcycle_id, anomalies_detected, anomaly_percent,
-        threshold, suggestion
-      }
-    """
+def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", minutes=30):
     try:
+        brand = normalize(brand)
+        model = normalize(model)
         df = _get_window_df(motorcycle_id, minutes)
         if df.empty or len(df) < 30:
-            return {
-                "status": "not enough data",
-                "motorcycle_id": motorcycle_id,
-                "anomalies_detected": 0,
-                "anomaly_percent": 0.0,
-            }
+            return {"status": "ok", "motorcycle_id": motorcycle_id, "message": "Not enough data", "explanations": []}
 
-        model, scaler = _load_model(brand, mode)
+        df = df[df[FEATURES].gt(0).all(axis=1)]
+        model_obj, scaler = _load_model(brand, motorcycle_id, mode)
+        X_scaled = scaler.transform(df[FEATURES].values)
+        agg_features = np.hstack([
+            np.mean(X_scaled, axis=0),
+            np.std(X_scaled, axis=0),
+            np.max(X_scaled, axis=0),
+            np.min(X_scaled, axis=0)
+        ]).reshape(1, -1)
 
-        X_scaled = scaler.transform(df[FEATURES])
-        # Build sliding 30‑row sequences the same way you trained
-        SEQ = 30
-        sequences = np.stack([X_scaled[i : i + SEQ] for i in range(len(X_scaled) - SEQ + 1)])
+        pred = model_obj.predict(agg_features)
+        is_anomaly = (pred[0] == -1)
 
-        preds = model.predict(sequences)
-        mse   = np.mean((sequences - preds) ** 2, axis=(1, 2))
+        explanations = []
+        abnormal_features = []
+        for f in FEATURES:
+            try:
+                mean_value = float(df[f].mean())
+            except:
+                mean_value = 0.0
+            severity = classify_value(f, mean_value, brand, model)
+            severity_score = compute_severity_score(f, mean_value, brand, model)
+            desc, high_tip, low_tip = SENSOR_SUGGESTIONS.get(f, ("", "", ""))
 
-        threshold        = np.mean(mse) + 2 * np.std(mse)
-        anomaly_mask     = mse > threshold
-        anomaly_count    = int(anomaly_mask.sum())
-        anomaly_percent  = 100.0 * anomaly_count / len(anomaly_mask)
+            try:
+                if f == "long_fuel_trim_1":
+                    is_high = mean_value > 0
+                else:
+                    r = NORMAL_RANGES[brand][model][f]
+                    midpoint = (r["warning_min"] + r["warning_max"]) / 2
+                    is_high = mean_value > midpoint
+            except:
+                is_high = True
 
-        # simple suggestion text
-        suggestion = (
-            "Check engine – high anomaly rate"
-            if anomaly_percent > 10
-            else "Some irregularities, keep monitoring"
-            if anomaly_count > 0
-            else "All parameters within learned idle pattern"
-        )
+            if severity != "normal":
+                abnormal_features.append(f)
+
+            tip_base = high_tip if is_high else low_tip
+
+            if severity == "critical":
+                level = "High" if is_high else "Low"
+                tip = (
+                    f"🔴 CRITICAL ({level}): {tip_base} "
+                    "Please consult a mechanic immediately."
+                )
+            elif severity == "warning":
+                level = "High" if is_high else "Low"
+                tip = (
+                f"🟡 WARNING ({level}): {tip_base} "
+                "Monitor this and schedule maintenance."
+                )
+            elif severity == "normal":
+                tip = "🟢 Normal: Sensor reading is within expected range."
+            else:
+                tip = "⚠️ Unknown: No reference range found."
+
+            explanations.append({
+                "feature": f,
+                "status": severity,
+                "value": round(mean_value, 2),
+                "severity_score": severity_score,
+                "description": desc,
+                "tip": tip
+            })
+
+        row_anomalies = []
+        for i, row in df.iterrows():
+            issues = []
+            for f in FEATURES:
+                v = row[f]
+                sev = classify_value(f, v, brand, model)
+                if sev in ["critical", "warning"]:
+                    issues.append(f"{f}={v:.2f} → {sev}")
+            if issues:
+                row_anomalies.append({
+                    "row_index": i,
+                    "time": row["_time"],
+                    "issues": issues,
+                    "values": {**{f: row[f] for f in FEATURES}, "_time": row["_time"]},
+                    "severity": {f: classify_value(f, row[f], brand, model) for f in FEATURES}
+                })
+
+        anomaly_percent = (len(row_anomalies) / len(df)) * 100
+        if any(e["status"] == "critical" for e in explanations):
+            suggestion = "⚠️ Critical values detected. Please see a mechanic immediately."
+        elif any(e["status"] == "warning" for e in explanations):
+            suggestion = "🛠️ Warning detected. Maintenance check recommended."
+        elif is_anomaly:
+            suggestion = "⚠️ ML pattern anomaly detected. Observe or consult a mechanic if needed."
+        else:
+            suggestion = "✅ All systems within normal range."
 
         return {
-            "status": "analyzed",
+            "status": "ok",
             "motorcycle_id": motorcycle_id,
-            "anomalies_detected": anomaly_count,
-            "anomaly_percent": anomaly_percent,
-            "threshold": float(threshold),
-            "suggestion": suggestion,
+            "anomalies_detected": len(row_anomalies),
+            "anomaly_percent": round(anomaly_percent, 2),
+            "abnormal_features": abnormal_features,
+            "explanations": explanations,
+            "row_anomalies": row_anomalies,
+            "suggestion": suggestion
         }
 
-    except Exception as exc:
-        return {
-            "status": "error",
-            "motorcycle_id": motorcycle_id,
-            "error_message": str(exc),
-        }
+    except Exception as e:
+        return {"status": "error", "motorcycle_id": motorcycle_id, "error": str(e)}
 
-
-# ──────────────────────────────────────────────────────────
-# Quick CLI test
-# ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print(detect_anomalies("2", brand="honda_click_i125", mode="idle"))
+    print(detect_anomalies(
+        motorcycle_id="2",
+        brand="honda",
+        model="click_i125",
+        mode="idle",
+        minutes=30
+    ))

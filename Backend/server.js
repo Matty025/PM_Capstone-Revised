@@ -172,6 +172,52 @@ app.get("/get-motorcycles", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+// this is for the oil change 
+
+
+// GET  /oil-history?motorcycle_id=123
+app.get("/oil-history", async (req, res) => {
+  const motorcycle_id = req.query.motorcycle_id;
+  if (!motorcycle_id) return res.status(400).json({ error: "motorcycle_id required" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id,
+              odometer_at_change,
+              date_of_oil_change,
+              created_at
+         FROM oil_change_history
+        WHERE motorcycle_id = $1
+     ORDER BY date_of_oil_change DESC`,
+      [motorcycle_id]
+    );
+    res.json(rows);          // full change‑oil history
+  } catch (err) {
+    console.error("Fetch oil history error:", err);
+    res.status(500).json({ error: "Failed to retrieve oil history" });
+  }
+});
+
+app.post("/oil-change", async (req, res) => {
+  const { motorcycle_id, odometer_km, date_of_oil_change } = req.body;
+
+  if (!motorcycle_id || !odometer_km) {
+    return res.status(400).json({ error: "motorcycle_id and odometer_km required" });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO oil_change_history (motorcycle_id, odometer_at_change, date_of_oil_change, created_at)
+       VALUES ($1, $2, $3, NOW())`,
+      [motorcycle_id, odometer_km, date_of_oil_change]
+    );
+    res.status(201).json({ message: "Odometer logged successfully" });
+  } catch (err) {
+    console.error("Error saving odometer:", err);
+    res.status(500).json({ error: "Failed to log odometer" });
+  }
+});
+
 
 // MQTT Setup
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || "mqtt://test.mosquitto.org";

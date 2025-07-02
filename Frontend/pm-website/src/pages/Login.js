@@ -1,20 +1,19 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "./Login.css"; 
+import "./Login.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(""); 
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError("Please enter your credentials");
+      toast.warn("⚠️ Please enter your credentials");
       return;
     }
-
-    console.log("Attempting to log in with:", { email, password });
 
     try {
       const response = await fetch("http://localhost:3001/login", {
@@ -24,59 +23,55 @@ function Login() {
       });
 
       const data = await response.json();
-      console.log("Server response:", data);
 
       if (response.ok) {
-        if (data.userId) { 
-          console.log("Login successful. User ID:", data.userId);
-
-          // Store userId and token in localStorage
+        if (data.userId) {
           localStorage.setItem("userId", data.userId);
-          localStorage.setItem("token", data.token);  
+          localStorage.setItem("token", data.token);
 
-          // Log stored userId to verify it's saved correctly
-          console.log("Stored userId:", localStorage.getItem("userId"));
+          toast.success("✅ Login successful!", { autoClose: 2000 });
 
-          navigate("/signup-motorcycle");
+          setTimeout(() => {
+            navigate("/signup-motorcycle");
+          }, 2000);
         } else {
-          console.error("Invalid response format:", data);
-          setError("Unexpected server response. Please try again.");
+          toast.error("Unexpected server response. Please try again.");
         }
       } else {
-        console.error("Server error:", data.error);
-        setError(data.error || "Login failed");
+        toast.error(data.error || "Login failed. Please try again.");
       }
     } catch (err) {
-      console.error("Login error:", err.message);
-      setError("An error occurred. Please try again.");
+      toast.error("🚫 Error connecting to server. Please try again.");
     }
   };
 
   return (
     <div className="login-container">
+      <ToastContainer position="top-center" />
       <div className="left-section">
         <h1>Welcome to Motorcycle Preventive Maintenance</h1>
-        <h3>Ensure the longevity and performance of your motorcycle with our predictive maintenance system.</h3>
+        <h3>
+          Ensure the longevity and performance of your motorcycle with our
+          predictive maintenance system.
+        </h3>
       </div>
 
       <div className="right-section">
         <div className="login-form">
           <h2>Login</h2>
 
-          {error && <p className="error-message">{error}</p>}
-
-          <input 
-            type="text" 
-            placeholder="Email" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
+          <input
+            type="text"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
-          <input 
-            type="password" 
-            placeholder="Password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
           <button onClick={handleLogin}>Login</button>

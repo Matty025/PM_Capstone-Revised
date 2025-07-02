@@ -8,7 +8,6 @@ import threading
 import sys
 import psutil
 from anomaly_model import detect_anomalies
-from flask_cors import CORS
 import joblib
 
 
@@ -20,7 +19,7 @@ app = Flask(__name__)
 CORS(app)  # Allow CORS for frontend access
 
 # MQTT broker settings
-MQTT_BROKER = "test.mosquitto.org"
+MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 MQTT_TOPIC = "obd/data"
 
@@ -129,42 +128,53 @@ def get_obd_data():
 # ------------------------------------------------------------
 #  this will save the Model of your current motorcycle
 # ------------------------------------------------------------
+
 @app.route('/train_model', methods=['POST'])
 def train_model():
-    data = request.get_json()
-    motorcycle_id = data.get("motorcycle_id")
-    brand = data.get("brand")
-
-    if not motorcycle_id or not brand:
-        return jsonify({"status": "error", "message": "Missing motorcycle_id or brand"}), 400
-
-    # Normalize brand for folder-safe naming
-    brand_folder = brand.strip().replace(" ", "_").lower()
-
     try:
-        # Construct and run the command
+        data = request.get_json()
+        motorcycle_id = data.get("motorcycle_id")
+        brand = data.get("brand")
+
+        if not motorcycle_id or not brand:
+            return jsonify({"status": "error", "message": "Missing motorcycle_id or brand"}), 400
+
+        # Normalize brand folder name
+        brand_folder = brand.strip().replace(" ", "_").lower()
+
+        # Use Python interpreter from current environment
+        python_exe = sys.executable
+
+        # Construct the command
         cmd = [
-            "python",
+            python_exe,
             "train_idle_model.py",
             "--motorcycle_id", str(motorcycle_id),
             "--brand", brand_folder,
-            "--minutes", "720"  # adjust as needed
+            "--minutes", "43200"
         ]
 
+        print(f"[DEBUG] Running command: {' '.join(cmd)}")
+
+        # Run the command and capture output
         result = subprocess.run(cmd, capture_output=True, text=True)
+
+        print("[DEBUG] STDOUT:", result.stdout)
+        print("[DEBUG] STDERR:", result.stderr)
 
         if result.returncode != 0:
             return jsonify({
                 "status": "error",
-                "message": result.stderr
+                "message": result.stderr or "Training script failed"
             }), 500
 
         return jsonify({
             "status": "success",
-            "message": result.stdout
+            "message": result.stdout or "Model trained successfully"
         })
 
     except Exception as e:
+        print("[TRAIN_MODEL ERROR]", str(e))
         return jsonify({"status": "error", "message": str(e)}), 500
 # ------------------------------------------------------------
 #  🔄  NEW: Recent‑data endpoint  (table on the frontend)
@@ -184,44 +194,91 @@ def recent_data():
 # -----------------------------------------------------------
 # ------------------------------------------------------------
 #  🔮  ML /predict endpoint  (anomaly suggestion)
-import joblib
-
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-    model_name = data.get('model')  # expects 'honda_click_i125'
+    motorcycle_id = str(data.get('motorcycle_id'))
+    brand = data.get('brand')
+    model = data.get('model')  # ✅ new
 
-    if not model_name:
-        return jsonify({"status": "error", "message": "No model name provided"}), 400
+    if not motorcycle_id or not brand or not model:
+        return jsonify({"status": "error", "message": "Missing motorcycle_id, brand, or model"}), 400
 
-    model_path = os.path.join(model_name, "idle.pkl")
+    brand_folder = brand.strip().replace(" ", "_").lower()
+    model_name   = model.strip().replace(" ", "_").lower()
+
+    model_path = os.path.join("models", brand_folder, f"idle_{motorcycle_id}.pkl")
 
     if not os.path.exists(model_path):
         return jsonify({
             "status": "error",
-            "message": f"Model not found: {model_path}"
+            "message": f"Model not found for motorcycle_id {motorcycle_id} → {model_path}"
         }), 404
 
-    # ✅ Correct way to load a joblib-saved file
     try:
-        model_bundle = joblib.load(model_path)
-        model = model_bundle["model"]
-        scaler = model_bundle["scaler"]
+        result = detect_anomalies(
+            motorcycle_id=motorcycle_id,
+            brand=brand_folder,
+            model=model_name,  # ✅ passed to anomaly_model
+            mode="idle",
+            minutes=30
+        )
+        return jsonify(result)
     except Exception as e:
         return jsonify({
             "status": "error",
-            "message": f"Failed to load model: {str(e)}"
+            "message": f"Prediction failed: {str(e)}"
         }), 500
 
-    # 🔮 (Insert your actual prediction logic here using model & scaler)
+# ----------------------------------this is the CSV routes for manual upload-------------------------
+@app.route('/predict-from-csv', methods=['POST'])
+def predict_from_csv():
+    try:
+        file = request.files["file"]
+        brand = request.form["brand"]
+        model = request.form["model"]
+        motorcycle_id = request.form["motorcycle_id"]
 
-    return jsonify({
-        "status": "ok",
-        "suggestion": "Replace oil soon",
-        "anomaly_percent": 5.42  # ← placeholder
-    })
+        if not file:
+            return jsonify({"status": "error", "message": "No file provided"}), 400
 
-# -----------------------------------------------------------
+        import pandas as pd
+        import numpy as np
+        import anomaly_model
+        from anomaly_model import detect_anomalies, FEATURES
+
+        df = pd.read_csv(file)
+
+        # Optional: clean bad rows
+        df = df.replace(0, np.nan).dropna()
+        for col in FEATURES:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        df["_time"] = pd.Timestamp.now()  # dummy time column
+
+        # Monkey patch only for this request
+        original_get_window_df = anomaly_model._get_window_df  # save original
+
+        def patched_get_window_df(*_, **__):
+            return df
+
+        anomaly_model._get_window_df = patched_get_window_df
+
+        try:
+            result = detect_anomalies(
+                motorcycle_id=motorcycle_id,
+                brand=brand,
+                model=model,
+                mode="idle",
+                minutes=30
+            )
+        finally:
+            anomaly_model._get_window_df = original_get_window_df  # restore original
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

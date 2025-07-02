@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Signupmotorcycle.module.css";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function SignupMotorcycle() {
   const navigate = useNavigate();
@@ -12,8 +14,8 @@ function SignupMotorcycle() {
     model: "",
     year: "",
     plateNumber: "",
-    odometer: "",             // user input, but backend expects odometer_km
-    lastOilChangeDate: "",    // user input, backend expects last_oil_change
+    odometer: "",
+    lastOilChangeDate: "",
   });
 
   const brandModels = {
@@ -25,15 +27,10 @@ function SignupMotorcycle() {
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    if (!userId) {
-      alert("Session expired. Please log in again.");
-      navigate("/login");
-      return;
-    }
-
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("You must be logged in to view this page.");
+
+    if (!userId || !token) {
+      toast.error("Session expired. Please log in again.");
       navigate("/login");
       return;
     }
@@ -52,16 +49,15 @@ function SignupMotorcycle() {
       })
       .catch((err) => {
         console.error("Error fetching motorcycles:", err);
+        toast.error("Failed to load motorcycles.");
         setLoading(false);
       });
   }, [navigate]);
 
   const handleSelectMotorcycle = (motorcycle) => {
-  console.log("Selected motorcycle before saving:", motorcycle);
-  localStorage.setItem("selectedMotorcycle", JSON.stringify(motorcycle));
-  navigate("/dashboard");
-};
-
+    localStorage.setItem("selectedMotorcycle", JSON.stringify(motorcycle));
+    navigate("/dashboard");
+  };
 
   const handleChange = (e) => {
     setMotorcycleData({ ...motorcycleData, [e.target.name]: e.target.value });
@@ -70,13 +66,13 @@ function SignupMotorcycle() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const userId = localStorage.getItem("userId");
+
     if (!userId) {
-      alert("Session expired. Please log in again.");
+      toast.error("Session expired. Please log in again.");
       navigate("/login");
       return;
     }
 
-    // Validate all fields including new ones
     if (
       !motorcycleData.brand ||
       !motorcycleData.model ||
@@ -85,7 +81,7 @@ function SignupMotorcycle() {
       motorcycleData.odometer === "" ||
       !motorcycleData.lastOilChangeDate
     ) {
-      alert("Please fill in all fields.");
+      toast.warn("⚠️ Please fill in all fields.");
       return;
     }
 
@@ -101,8 +97,8 @@ function SignupMotorcycle() {
           model: motorcycleData.model,
           year: motorcycleData.year,
           plateNumber: motorcycleData.plateNumber,
-          odometer_km: parseInt(motorcycleData.odometer, 10),    // Use snake_case here
-          last_oil_change: motorcycleData.lastOilChangeDate,     // Use snake_case here
+          odometer_km: parseInt(motorcycleData.odometer, 10),
+          last_oil_change: motorcycleData.lastOilChangeDate,
           user_id: userId,
         }),
       });
@@ -110,14 +106,14 @@ function SignupMotorcycle() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(data?.message || "Signup successful!");
-        navigate("/dashboard");
+        toast.success(data?.message || "✅ Signup successful!");
+        setTimeout(() => navigate("/dashboard"), 2000);
       } else {
-        alert(data?.error || "Signup failed. Please try again.");
+        toast.error(data?.error || "❌ Signup failed. Please try again.");
       }
     } catch (error) {
       console.error("Signup Motorcycle Error:", error);
-      alert("Server error. Please try again.");
+      toast.error("🚫 Server error. Please try again.");
     }
   };
 
@@ -126,13 +122,14 @@ function SignupMotorcycle() {
       setRegisterNew(false);
     } else {
       localStorage.removeItem("userId");
-      alert("No motorcycles registered. Returning to login.");
+      toast.info("No motorcycles registered. Returning to login.");
       navigate("/login");
     }
   };
 
   return (
     <div className={styles.signupContainer}>
+      <ToastContainer position="top-center" />
       <div className={styles.signupBox}>
         <h2>{motorcycles.length > 0 && !registerNew ? "Select Your Motorcycle" : "Register a New Motorcycle"}</h2>
 
@@ -159,17 +156,10 @@ function SignupMotorcycle() {
         ) : (
           <form className={styles.signupForm} onSubmit={handleSubmit}>
             <label>Brand</label>
-            <select
-              name="brand"
-              required
-              onChange={handleChange}
-              value={motorcycleData.brand}
-            >
+            <select name="brand" required onChange={handleChange} value={motorcycleData.brand}>
               <option value="">Select a Brand</option>
               {Object.keys(brandModels).map((brand) => (
-                <option key={brand} value={brand}>
-                  {brand}
-                </option>
+                <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
 

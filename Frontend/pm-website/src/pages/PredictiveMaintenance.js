@@ -1,43 +1,43 @@
-// PredictiveMaintenance.js
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+   BarChart,   
+  Bar,  
+} from "recharts";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import RowAnomalyLineChart from "./RowAnomalyLineChart";
+
+
 import "./PredictiveMaintenance.css";
-
-/* ---------- helpers ---------- */
-function downloadCSV(rows, fileName = "maintenance.csv") {
-  if (!rows.length) return;
-  const header = Object.keys(rows[0]).join(",");
-  const csv = [header, ...rows.map(r => Object.values(r).join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", fileName);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-
-const normalizeBrand = str =>
-  (str || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")            // spaces → _
-    .replace(/^_|_$/g, "");                 // trim _
-
-/* -------------------------------- */
 
 function PredictiveMaintenance() {
   const navigate = useNavigate();
-
+  const [minutes, setMinutes] = useState(30);
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [minutes,       setMinutes]       = useState(30);
-  const [autoRefresh,   setAutoRefresh]   = useState(false);
-  const [loading,       setLoading]       = useState(true);
-  const [rows,          setRows]          = useState([]);
-  const [analysis,      setAnalysis]      = useState(null);
-  const intervalRef = useRef(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [useUploadedFile, setUseUploadedFile] = useState(false);
 
-  /* ───────────────────────── initial load ───────────────────────── */
+
   useEffect(() => {
     const selected = JSON.parse(localStorage.getItem("selectedMotorcycle"));
     if (!selected) {
@@ -46,23 +46,8 @@ function PredictiveMaintenance() {
       return;
     }
     fetchRows(selected.motorcycle_id || selected.id, minutes);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [minutes, navigate]);
 
-  /* ──────────────────────── auto‑refresh timer ─────────────────── */
-  useEffect(() => {
-    if (autoRefresh) {
-      intervalRef.current = setInterval(() => {
-        const sel = JSON.parse(localStorage.getItem("selectedMotorcycle"));
-        if (sel) fetchRows(sel.motorcycle_id || sel.id, minutes, { silent: true });
-      }, 30_000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [autoRefresh, minutes]);
-
-  /* ────────────────────────── REST helpers ─────────────────────── */
   const fetchRows = async (motorcycle_id, mins, { silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
@@ -72,7 +57,7 @@ function PredictiveMaintenance() {
       });
       if (data.status === "ok") {
         setRows(data.rows);
-        setAnalysis(null);          // clear previous ML result
+        setAnalysis(null);
       }
     } catch (err) {
       console.error(err);
@@ -81,190 +66,540 @@ function PredictiveMaintenance() {
       if (!silent) setLoading(false);
     }
   };
-// this is the function for buttons 
-  const handleTrainModel = async () => {
-  const selectedMotorcycle = JSON.parse(localStorage.getItem('selectedMotorcycle'));
-  
-  if (!selectedMotorcycle) {
-    alert("No motorcycle selected.");
+useEffect(() => {
+  if (!useUploadedFile) {
+    setAnalysis(null);        // ✅ clear old CSV-based analysis
+    setRows([]);              // optional: reset rows
+    setUploadedFile(null);    // ✅ clear uploaded file too
+  }
+}, [useUploadedFile]);
+
+
+  const runPrediction = async () => {
+  const selected = JSON.parse(localStorage.getItem("selectedMotorcycle"));
+  const id = selected?.motorcycle_id || selected?.id;
+  const brand = selected?.brand?.toLowerCase().replace(/\s+/g, "_");
+  const model = selected?.model?.toLowerCase().replace(/\s+/g, "_");
+
+  if (!id || !brand || !model) {
+    toast.error("❌ Missing motorcycle info.");
     return;
   }
 
-  const motorcycle_id = selectedMotorcycle.id;
-  const brand = selectedMotorcycle.brand;
-
-  try {
-    const response = await fetch("http://localhost:5000/train_model", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ motorcycle_id, brand })
-    });
-
-    const result = await response.json();
-
-    if (result.status === "success") {
-      alert("✅ Model trained and saved!\n" + result.message);
-    } else {
-      alert("❌ Error:\n" + result.message);
-    }
-  } catch (err) {
-    console.error("Error training model:", err);
-    alert("🚫 Failed to train model.");
-  }
-};
-
-
- const runPrediction = async () => {
-  const selected = JSON.parse(localStorage.getItem("selectedMotorcycle"));
-  const id = selected?.motorcycle_id || selected?.id;
-
-  if (!id || !selected) return;
-
-  const modelName = `${selected.brand}_${selected.model}`.toLowerCase().replace(/\s+/g, "_");
-
   setLoading(true);
+  toast.info("🔍 Starting analysis...");
+
   try {
-    const { data } = await axios.post("http://localhost:5000/predict", {
-      motorcycle_id: id,
-      model: modelName, // send the model string
-    });
-    setAnalysis(data);
-    setRows([]);
+    if (uploadedFile && useUploadedFile) {
+      toast.info("📁 Using uploaded CSV file for analysis.");
+
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+      formData.append("brand", brand);
+      formData.append("model", model);
+      formData.append("motorcycle_id", id);
+
+      const { data } = await axios.post("http://localhost:5000/predict-from-csv", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (data?.error) {
+        toast.warning(`⚠️ Server error (CSV): ${data.error}`);
+        return;
+      }
+
+      setAnalysis(data);
+      setRows([]);
+      toast.success("✅ Analysis complete using uploaded file.");
+} else {
+  setUploadedFile(null);
+  setUseUploadedFile(false);
+  setAnalysis(null); // ✅ <--- for clearing the csv and use the live data
+
+  toast.info("📡 Using latest InfluxDB sensor data for analysis...");
+
+  const { data } = await axios.post("http://localhost:5000/predict", {
+    motorcycle_id: id,
+    brand,
+    model,
+  });
+
+  if (data?.error) {
+    toast.warning(`⚠️ Server error: ${data.error}`);
+    return;
+  }
+
+  setAnalysis(data);
+  setRows([]);
+  toast.success("✅ Analysis complete using live data.");
+}
+
   } catch (err) {
-    console.error(err);
-    alert("Prediction failed.");
+    console.error("❌ Prediction failed:", err);
+    toast.error("❌ Prediction failed. See console for details.");
   } finally {
     setLoading(false);
   }
 };
 
-  /* ───────────────────────── logout helper ─────────────────────── */
-  const handleLogout = () => {
-    localStorage.removeItem("selectedMotorcycle");
-    navigate("/");
-  };
+const saveRecentDataAsCSV = () => {
+  if (!rows.length) {
+    alert("No data available to export.");
+    return;
+  }
 
-  /* ──────────────────────────── UI ─────────────────────────────── */
-  return (
-    <div className="dashboardContainer">
-      {/* hamburger */}
-      <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+  const headers = Object.keys(rows[0]);
+  const csvRows = [
+    headers.join(","), // header row
+    ...rows.map(row => headers.map(h => row[h]).join(",")) // data rows
+  ];
 
-      {/* sidebar */}
-      <div className={`dashboardSidebar ${sidebarOpen ? "open" : ""}`}>
-        <button className="closeBtn" onClick={() => setSidebarOpen(false)}>✖</button>
+  const csvContent = csvRows.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
 
-        <button className="profileBtn" onClick={() => navigate("/profile")}>
-          <img
-            src="https://static.vecteezy.com/system/resources/previews/025/267/725/non_2x/portrait-of-a-man-wearing-a-motocross-rider-helmet-and-wearing-a-sweater-side-view-suitable-for-avatar-social-media-profile-print-etc-flat-graphic-vector.jpg"
-            alt="Profile"
-            className="profileImage"
-          />
-          <h3 className="profileLabel">Profile</h3>
-        </button>
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "recent_obd_data.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
-        <button onClick={() => navigate("/dashboard")}>Dashboard</button>
-        <button onClick={() => navigate("/Reports")}>Reports</button>
-        <button onClick={() => navigate("/predictivemaintenance")}>Preventive&nbsp;Maintenance</button>
-        <button onClick={() => navigate("/alerts")}>Alerts</button>
-        <button onClick={() => navigate("/Settings")}>Settings</button>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
-      {sidebarOpen && <div className="backdrop" onClick={() => setSidebarOpen(false)} />}
 
-      {/* main */}
-      <div className="dashboardContent space-y-6">
+  const handleTrainModel = async () => {
+  const selected = JSON.parse(localStorage.getItem("selectedMotorcycle"));
+  const motorcycle_id = selected?.motorcycle_id || selected?.id;
+  const brand = selected?.brand;
 
-        {/* control bar */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-lg font-semibold mr-auto">Preventive Maintenance</h2>
+  if (!motorcycle_id || !brand) {
+    alert("Missing motorcycle info.");
+    return;
+  }
 
-          <label className="text-sm">
-            Last&nbsp;
+  try {
+    const res = await axios.post("http://localhost:5000/train_model", {
+      motorcycle_id,
+      brand,
+    });
+
+    alert("Model trained successfully!");
+    console.log(res.data.message);
+  } catch (err) {
+    console.error(err);
+    alert("Training failed. Check server logs.");
+  }
+};
+
+const exportPDF = () => {
+  const input = document.getElementById("analysis-report");
+  if (!input) return alert("No analysis report found to export.");
+
+  html2canvas(input, { scale: 2 }).then((canvas) => {
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // First page
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
+
+    // Additional pages
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    pdf.save("analysis_report.pdf");
+  });
+};
+
+  const statusBreakdown = analysis?.explanations?.reduce(
+  (acc, e) => {
+    if (e.status) acc[e.status]++;
+    return acc;
+  },
+  { normal: 0, warning: 0, critical: 0 }
+) ?? { normal: 0, warning: 0, critical: 0 };
+
+const pieData = [
+  { name: "Normal", value: statusBreakdown.normal },
+  { name: "Warning", value: statusBreakdown.warning },
+  { name: "Critical", value: statusBreakdown.critical },
+];
+
+const featureDisplayNames = {
+  rpm: "RPM",
+  coolant_temp: "Coolant Temperature",
+  elm_voltage: "ELM Voltage",
+  engine_load: "Engine Load",
+  throttle_pos: "Throttle Position",
+  long_fuel_trim_1: "Fuel Trim",
+};
+const fileInputRef = useRef(null);
+const getFeatureAnomalySummary = (rowAnomalies = []) => {
+  const summary = {};
+  rowAnomalies.forEach((row) => {
+    Object.entries(row.severity || {}).forEach(([feature, status]) => {
+      if (status === "normal" || status === "unknown") return;
+
+      if (!summary[feature]) {
+        summary[feature] = { warning: 0, critical: 0 };
+      }
+      summary[feature][status]++;
+    });
+  });
+  return summary;
+};
+const statusEmoji = {
+  normal: "🟢",
+  warning: "🟡",
+  critical: "🔴",
+  unknown: "⚪",
+};
+
+const statusColor = {
+  normal: "text-green-600",
+  warning: "text-yellow-600",
+  critical: "text-red-600",
+  unknown: "text-gray-400",
+};
+
+const progressColor = {
+  normal: "#22c55e",   // green
+  warning: "#eab308",  // yellow
+  critical: "#ef4444", // red
+  unknown: "#9ca3af",  // gray (you can pick a hex for gray-400)
+};
+
+
+return (
+  <div className="dashboardContainer">
+    <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+
+    <button
+      className={`hamburger ${sidebarOpen ? "hide" : ""}`}
+      onClick={() => setSidebarOpen(true)}
+    >
+      ☰
+    </button>
+
+    <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+      <button className="closeBtn" onClick={() => setSidebarOpen(false)}>✖</button>
+      <button className="profileBtn" onClick={() => navigate("/profile")}>
+        <img
+          src="https://static.vecteezy.com/system/resources/previews/025/267/725/non_2x/portrait-of-a-man-wearing-a-motocross-rider-helmet-and-wearing-a-sweater-side-view-suitable-for-avatar-social-media-profile-print-etc-flat-graphic-vector.jpg"
+          alt="Profile"
+          className="profileImage"
+        />
+        <h3 className="profileLabel">Profile</h3>
+      </button>
+      <button onClick={() => navigate("/dashboard")}>Dashboard</button>
+      <button onClick={() => navigate("/Reports")}>Reports</button>
+      <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
+      <button onClick={() => navigate("/alerts")}>Alerts</button>
+      <button onClick={() => navigate("/Settings")}>Settings</button>
+      <button onClick={() => {
+        localStorage.clear();
+        navigate("/");
+      }}>Logout</button>
+    </div>
+
+    <div className="dashboardContent space-y-6">
+      <div className="toolbar">
+        <h2 className="toolbar-title">Preventive Maintenance</h2>
+        <div className="toolbar-group">
+          <label className="toolbar-label">
+            Last
             <input
               type="number"
-              className="border w-16 text-center"
+              className="toolbar-input"
               value={minutes}
               min={1}
-              onChange={e => setMinutes(Number(e.target.value))}
+              onChange={(e) => setMinutes(Number(e.target.value))}
             />
-            &nbsp;min
+            min
           </label>
 
-          <button
-            className="px-3 py-1 bg-slate-200 rounded hover:bg-slate-300"
-            onClick={() => {
-              const sel = JSON.parse(localStorage.getItem("selectedMotorcycle"));
-              if (sel) fetchRows(sel.motorcycle_id || sel.id, minutes);
-            }}
-          >
-            🔄 Refresh
-          </button>
+          <button className="btn" onClick={saveRecentDataAsCSV}>📥 Download CSV</button>
+  <button
+  className="btn"
+  onClick={() => {
+    const sel = JSON.parse(localStorage.getItem("selectedMotorcycle"));
+    if (sel) fetchRows(sel.motorcycle_id || sel.id, minutes);
 
-          <label className="text-sm flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={e => setAutoRefresh(e.target.checked)}
-            />
-            auto‑refresh
-          </label>
+    // Clear uploaded file states
+    setUploadedFile(null);
+    setUseUploadedFile(false);
 
-          <button
-            className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded"
-            onClick={runPrediction}
-          >
-            🔍 Analyze
-          </button>
-          <button onClick={handleTrainModel} className="train-model-btn">
-            Save Idle Model
-          </button>
+    // Manually clear the file input field
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
-          <button
-            className="bg-emerald-500 hover:bg-emerald-600 text-white py-1 px-3 rounded"
-            disabled={!rows.length}
-            onClick={() => downloadCSV(rows)}
-          >
-            ⬇️ CSV
-          </button>
+    // Also clear analysis result just to be safe
+    setAnalysis(null);
+  }}
+>
+  🔄 Refresh
+</button>
+
+
+          <button className="btn primary" onClick={handleTrainModel}>💾 Train Idle Model</button>
+          <button className="btn analyze" onClick={runPrediction}>🔍 Analyze</button>
         </div>
+      </div>
 
-        {/* table or ML card */}
-        {loading ? (
-          <p>Loading…</p>
-        ) : analysis ? (
-          <div
-            className={`p-4 rounded border
-              ${analysis.status === "error"            ? "border-red-400 bg-red-100"
-                : analysis.anomaly_percent > 10        ? "border-red-400 bg-red-100"
-                : analysis.anomaly_percent > 3         ? "border-yellow-400 bg-yellow-100"
-                :                                         "border-green-400 bg-green-100"}`}
-          >
-            <h3 className="font-semibold mb-1">ML Suggestion</h3>
-            <p>{analysis.suggestion}</p>
-            {"anomaly_percent" in analysis && (
-              <p className="text-xs italic mt-1">
-                {analysis.anomaly_percent.toFixed(2)} % of readings are anomalous
-              </p>
-            )}
+      <div className="csvUploadContainer">
+        <input
+  type="file"
+  accept=".csv"
+  ref={fileInputRef}
+  onChange={(e) => setUploadedFile(e.target.files[0])}
+/>
+  
+        <label>
+          <input
+            type="checkbox"
+            checked={useUploadedFile}
+            onChange={(e) => setUseUploadedFile(e.target.checked)}
+          />
+          Use uploaded CSV for analysis
+        </label>
+      </div>
+
+      {rows.length > 0 && !analysis && (
+        <div className="mainDashboardGrid">
+          <div className="cardPanel">
+            <h3 className="sectionTitle">📊 Sensor Trends (Last {minutes} min)</h3>
+
+          <ResponsiveContainer width="100%" height={300}>
+  <LineChart data={rows.slice(-50)}>
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="_time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
+    <YAxis />
+    <Tooltip />
+    <Legend />
+    <Line type="monotone" dataKey="rpm" stroke="#6366f1" dot={false} name={featureDisplayNames["rpm"]} />
+    <Line type="monotone" dataKey="coolant_temp" stroke="#22c55e" dot={false} name={featureDisplayNames["coolant_temp"]} />
+    <Line type="monotone" dataKey="elm_voltage" stroke="#f97316" dot={false} name={featureDisplayNames["elm_voltage"]} />
+    <Line type="monotone" dataKey="engine_load" stroke="#3b82f6" dot={false} name={featureDisplayNames["engine_load"]} />
+    <Line type="monotone" dataKey="throttle_pos" stroke="#ec4899" dot={false} name={featureDisplayNames["throttle_pos"]} />
+    <Line type="monotone" dataKey="long_fuel_trim_1" stroke="#10b981" dot={false} name={featureDisplayNames["long_fuel_trim_1"]} />
+  </LineChart>
+</ResponsiveContainer>
+
           </div>
-        ) : rows.length ? (
+
+          <div className="cardPanel">
+            <h3 className="sectionTitle">🧠 Ready for Analysis</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              This data was recorded from the last <strong>{minutes} minutes</strong>.<br />
+              Click <strong>🔍 Analyze</strong> to run machine learning prediction on your motorcycle's behavior.
+            </p>
+            <div className="mt-4 border-l-4 border-yellow-400 bg-yellow-100 p-3 text-yellow-800 text-sm rounded shadow">
+              🛠 Tip: Make sure your motorcycle is in warm idle (70–85°C) for best results.
+            </div>
+          </div>
+        </div>
+      )}
+
+     {loading ? (
+  <p>Loading…</p>
+) : analysis ? (
+  <>
+    {/* ✅ START: Wrap analysis content for PDF export */}
+    <div id="analysis-report">
+      <div className="sectionWrapper">
+
+        <h3 className="text-xl font-semibold mb-4 text-center">🧠 ML Analysis Summary</h3>
+<p className="text-xs italic text-gray-600 mt-3 text-center">
+  📊 <strong>Note:</strong> Bar and pie charts summarize <u>average sensor values</u>.  
+  See row-level anomalies below for detailed critical/warning readings.
+</p>
+
+            <div className="flex gap-3 mb-6 justify-center">
+              <span className="statusChip normal">✅ Normal: {statusBreakdown?.normal}</span>
+              <span className="statusChip warning">⚠️ Warning: {statusBreakdown?.warning}</span>
+              <span className="statusChip critical">❗ Critical: {statusBreakdown?.critical}</span>
+            </div>
+
+<ResponsiveContainer width="100%" height={260}>
+  <PieChart>
+    <Pie
+      data={pieData}
+      cx="50%"
+      cy="50%"
+      innerRadius={50}
+      outerRadius={90}
+      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+      labelLine={false}
+      dataKey="value"
+    >
+      {pieData.map((entry) => (
+        <Cell
+          key={entry.name}
+          fill={
+            entry.name === "Normal"
+              ? "#10b981" // Green
+              : entry.name === "Warning"
+              ? "#facc15" // Yellow
+              : "#ef4444" // Red
+          }
+        />
+      ))}
+    </Pie>
+    <Legend verticalAlign="bottom" iconType="circle" />
+  </PieChart>
+</ResponsiveContainer>
+
+<ResponsiveContainer width="100%" height={300} className="mt-6">
+  <BarChart
+    data={analysis.explanations?.map((item) => ({
+      name: featureDisplayNames[item.feature] || item.feature,
+      status: item.status === "critical" ? 3 : item.status === "warning" ? 2 : 1,
+      severity: item.status
+    }))}
+  >
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="name" />
+    <YAxis
+      ticks={[1, 2, 3]}
+      domain={[0, 3]}
+      tickFormatter={(val) =>
+        val === 1 ? "Normal" : val === 2 ? "Warning" : "Critical"
+      }
+    />
+    <Tooltip
+      formatter={(value, name, props) => {
+        const statusMap = { 1: "Normal", 2: "Warning", 3: "Critical" };
+        return statusMap[value];
+      }}
+    />
+    <Bar dataKey="status">
+      {analysis.explanations?.map((entry, index) => {
+        const fillColor =
+          entry.status === "critical"
+            ? "#ef4444"
+            : entry.status === "warning"
+            ? "#facc15"
+            : "#10b981";
+        return <Cell key={`bar-${index}`} fill={fillColor} />;
+      })}
+    </Bar>
+  </BarChart>
+  
+</ResponsiveContainer>
+
+  <h4 className="text-lg font-semibold mt-6 mb-2 text-center">
+    🔧 Feature Health Check
+  </h4>
+
+  <p className="text-sm text-gray-600 text-center mb-4 max-w-xl mx-auto">
+    Each component's severity score is based on anomalies detected during analysis.
+    <br />
+    <strong>💡 The lower the score, the healthier the component.</strong>
+  </p>
+
+<div className="feature-health-check-container">
+  {analysis?.explanations?.map((item, i) => {
+    const emoji = statusEmoji[item.status] || "⚪";
+    const textColor = statusColor[item.status];
+    const barColor = progressColor[item.status];
+    const displayName = featureDisplayNames[item.feature] || item.feature;
+
+    return (
+      <div
+        key={i}
+        className={`feature-card ${textColor}`}
+        style={{ minHeight: "110px" }}
+      >
+        <h4 className="feature-title">
+          {emoji} {displayName}
+        </h4>
+        <p className="feature-score">
+          Score: <strong>{item.severity_score}%</strong>
+        </p>
+        <div className="progress-bar-bg">
+          <div
+            className="progress-bar-fill"
+            style={{ width: `${item.severity_score}%`, backgroundColor: barColor }}
+          />
+        </div>
+        <p className="feature-tip">{item.tip}</p>
+      </div>
+    );
+  })}
+</div>
+
+
+{analysis?.row_anomalies?.length > 0 && (
+  <>
+<div className="centered-anomaly-summary">
+  <h4>🧪 Rows Anomaly Summary</h4>
+  <ul>
+    {Object.entries(getFeatureAnomalySummary(analysis.row_anomalies)).map(([feature, counts]) => (
+      <li key={feature}>
+        <strong>{featureDisplayNames[feature] || feature}:</strong>{" "}
+        {counts.warning} warning, {counts.critical} critical anomalies
+      </li>
+    ))}
+  </ul>
+  <p>
+    From {analysis.row_anomalies.length} anomalous rows analyzed
+  </p>
+</div>
+
+
+
+    {/* Grid container for charts */}
+    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="rpm" />
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="elm_voltage" />
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="coolant_temp" />
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="engine_load" />
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="long_fuel_trim_1" />
+      <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="throttle_pos" />
+    </div>
+  </>
+)}
+
+          </div>
+
+                </div> {/* ✅ Close analysis-report */}
+        <button onClick={exportPDF} className="download-pdf-btn">
+  🧾 Download PDF Report
+</button>
+
+        </>
+      ) : rows.length ? (
+        <div className="cardPanel tablePanel">
+          <h3 className="sectionTitle">🧾 Recent Sensor Data</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border">
-              <thead className="bg-gray-100">
-                <tr>
-                  {Object.keys(rows[0]).map(h => (
-                    <th key={h} className="border px-1">{h}</th>
-                  ))}
-                </tr>
+            <table className="recentTable">
+             <thead>
+              <tr>
+              {Object.keys(rows[0]).map((h) => (
+              <th key={h}>{featureDisplayNames[h] || h}</th>
+                   ))}
+             </tr>
               </thead>
+
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
                     {Object.values(r).map((v, j) => (
-                      <td key={j} className="border px-1">
+                      <td key={j}>
                         {j === 0 ? new Date(v).toLocaleString() : v}
                       </td>
                     ))}
@@ -273,12 +608,15 @@ function PredictiveMaintenance() {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p>No data in selected window.</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <p>No data in selected window.</p>
+      )}
     </div>
-  );
+  </div>
+);
+
+
 }
 
 export default PredictiveMaintenance;
