@@ -84,8 +84,8 @@ df = df.drop(columns=["result", "table"], errors="ignore")
 df = df.dropna().sort_values("_time").reset_index(drop=True)
 
 # ✅ Filter by coolant temperature
-df = df[(df["coolant_temp"] >= 70) & (df["coolant_temp"] <= 85)]
-print(f"Filtered to {len(df)} rows where coolant_temp is between 70–85°C")
+df = df[(df["coolant_temp"] >= 70) & (df["coolant_temp"] <= 105)]
+print(f"Filtered to {len(df)} rows where coolant_temp is between 70–105°C")
 
 if df.empty or len(df) < 60:
     raise RuntimeError("Not enough filtered warm-idle data to train the model!")

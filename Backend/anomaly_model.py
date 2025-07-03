@@ -122,37 +122,72 @@ def _get_window_df(motorcycle_id: str, minutes: int = 30) -> pd.DataFrame:
     client.close()
     if df.empty:
         return pd.DataFrame()
-    df = df.drop(columns=["result", "table"], errors="ignore").dropna().sort_values("_time").reset_index(drop=True)
+    df = df.drop(columns=["result", "table"], errors="ignore")
+
+    # Show how many nulls per feature for debugging
+    print("[DEBUG] Null count per column:")
+    print(df[FEATURES].isnull().sum())
+
+    # Keep rows with at least 4 non-null sensor readings
+    df = df[df[FEATURES].notna().sum(axis=1) >= 4]
+
+    df = df.sort_values("_time").reset_index(drop=True)
     return df
 
 def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", minutes=30):
     try:
+        print(f"\n[INFO] Detecting anomalies for Motorcycle ID: {motorcycle_id}, Brand: {brand}, Model: {model}, Mode: {mode}")
+
         brand = normalize(brand)
         model = normalize(model)
-        df = _get_window_df(motorcycle_id, minutes)
-        if df.empty or len(df) < 30:
-            return {"status": "ok", "motorcycle_id": motorcycle_id, "message": "Not enough data", "explanations": []}
 
-        df = df[df[FEATURES].gt(0).all(axis=1)]
+        # Step 1: Fetch data from InfluxDB
+        df = _get_window_df(motorcycle_id, minutes)
+        print(f"[DEBUG] Raw data rows from InfluxDB: {len(df)}")
+
+        # Step 2: Clean data — remove rows where all feature values are 0
+        df = df[(df[FEATURES] != 0).any(axis=1)]
+        print(f"[DEBUG] Rows after removing all-zero rows: {len(df)}")
+
+        # Step 3: Check if we have enough data to continue
+        if df.empty or len(df) < 30:
+            print("[WARN] Not enough data to analyze.")
+            return {
+                "status": "ok",
+                "motorcycle_id": motorcycle_id,
+                "message": "Not enough data",
+                "explanations": []
+            }
+
+        # Step 4: Load model and scale data
         model_obj, scaler = _load_model(brand, motorcycle_id, mode)
         X_scaled = scaler.transform(df[FEATURES].values)
+        print(f"[DEBUG] Scaled input shape: {X_scaled.shape}")
+
+        # Step 5: Aggregate features for prediction
         agg_features = np.hstack([
             np.mean(X_scaled, axis=0),
             np.std(X_scaled, axis=0),
             np.max(X_scaled, axis=0),
             np.min(X_scaled, axis=0)
         ]).reshape(1, -1)
+        print(f"[DEBUG] Aggregated features shape: {agg_features.shape}")
 
+        # Step 6: Make prediction
         pred = model_obj.predict(agg_features)
         is_anomaly = (pred[0] == -1)
+        print(f"[RESULT] Model Prediction: {'Anomaly' if is_anomaly else 'Normal'}")
 
+        # Step 7: Interpret sensor values
         explanations = []
         abnormal_features = []
+
         for f in FEATURES:
             try:
                 mean_value = float(df[f].mean())
             except:
                 mean_value = 0.0
+
             severity = classify_value(f, mean_value, brand, model)
             severity_score = compute_severity_score(f, mean_value, brand, model)
             desc, high_tip, low_tip = SENSOR_SUGGESTIONS.get(f, ("", "", ""))
@@ -174,16 +209,10 @@ def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", mi
 
             if severity == "critical":
                 level = "High" if is_high else "Low"
-                tip = (
-                    f"🔴 CRITICAL ({level}): {tip_base} "
-                    "Please consult a mechanic immediately."
-                )
+                tip = f"🔴 CRITICAL ({level}): {tip_base} Please consult a mechanic immediately."
             elif severity == "warning":
                 level = "High" if is_high else "Low"
-                tip = (
-                f"🟡 WARNING ({level}): {tip_base} "
-                "Monitor this and schedule maintenance."
-                )
+                tip = f"🟡 WARNING ({level}): {tip_base} Monitor this and schedule maintenance."
             elif severity == "normal":
                 tip = "🟢 Normal: Sensor reading is within expected range."
             else:
@@ -198,6 +227,7 @@ def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", mi
                 "tip": tip
             })
 
+        # Step 8: Row-level anomalies
         row_anomalies = []
         for i, row in df.iterrows():
             issues = []
@@ -216,6 +246,8 @@ def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", mi
                 })
 
         anomaly_percent = (len(row_anomalies) / len(df)) * 100
+
+        # Step 9: Final message
         if any(e["status"] == "critical" for e in explanations):
             suggestion = "⚠️ Critical values detected. Please see a mechanic immediately."
         elif any(e["status"] == "warning" for e in explanations):
@@ -224,6 +256,10 @@ def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", mi
             suggestion = "⚠️ ML pattern anomaly detected. Observe or consult a mechanic if needed."
         else:
             suggestion = "✅ All systems within normal range."
+
+        print(f"[SUMMARY] {len(row_anomalies)} row anomalies found ({anomaly_percent:.2f}% of data)")
+        print(f"[SUMMARY] Abnormal features: {abnormal_features}")
+        print(f"[SUGGESTION] {suggestion}")
 
         return {
             "status": "ok",
@@ -237,6 +273,7 @@ def detect_anomalies(motorcycle_id: str, brand: str, model: str, mode="idle", mi
         }
 
     except Exception as e:
+        print(f"[ERROR] detect_anomalies failed: {e}")
         return {"status": "error", "motorcycle_id": motorcycle_id, "error": str(e)}
 
 if __name__ == "__main__":

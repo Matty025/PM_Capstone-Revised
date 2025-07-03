@@ -1,0 +1,30 @@
+{
+  "yamaha": {
+    "nmax_155": {
+      "rpm": { "warning_min": 1400, "warning_max": 1600, "critical_min": 1300, "critical_max": 1700 },
+      "coolant_temp": { "warning_min": 60, "warning_max": 80, "critical_min": 50, "critical_max": 90 },
+      "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
+      "throttle_pos": { "warning_min": 8, "warning_max": 15, "critical_min": 5, "critical_max": 18 },
+      "engine_load": { "warning_min": 15, "warning_max": 35, "critical_min": 10, "critical_max": 40 },
+      "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
+    },
+    "sniper_155": {
+      "rpm": { "warning_min": 1350, "warning_max": 1550, "critical_min": 1200, "critical_max": 1700 },
+      "coolant_temp": { "warning_min": 60, "warning_max": 85, "critical_min": 50, "critical_max": 95 },
+      "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
+      "throttle_pos": { "warning_min": 7, "warning_max": 14, "critical_min": 5, "critical_max": 18 },
+      "engine_load": { "warning_min": 10, "warning_max": 30, "critical_min": 5, "critical_max": 40 },
+      "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
+    }
+  },
+  "honda": {
+    "click_i125": {
+      "rpm": { "warning_min": 1300, "warning_max": 1500, "critical_min": 1200, "critical_max": 1600 },
+      "coolant_temp": { "warning_min": 60, "warning_max": 85, "critical_min": 50, "critical_max": 95 },
+      "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
+      "throttle_pos": { "warning_min": 8, "warning_max": 15, "critical_min": 5, "critical_max": 18 },
+      "engine_load": { "warning_min": 10, "warning_max": 30, "critical_min": 5, "critical_max": 40 },
+      "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
+    }
+  }
+}

@@ -1,60 +1,67 @@
-from flask import Flask, jsonify, request
+# report_api.py
+from flask import Blueprint, jsonify, request
 from influxdb_client import InfluxDBClient
 
-# Flask app
-app = Flask(__name__)
+report_api = Blueprint("report_api", __name__)
 
 # InfluxDB configuration
 INFLUXDB_URL = "http://localhost:8086"
-INFLUXDB_TOKEN = "J1-CbguXYPEgwc8tVJ4EL2AfY59dti59pdlBqHkmMuJth_jJ4mdPu46hF929D-ZVuNnbGiCS9QC7qBASETFmZw=="
+INFLUXDB_TOKEN = "rLaEXQUWJ2R71NQIEFVfhw18L9xC4knKBf7bPAymrJtz6nukc5NIfPPdoc2dlk0c8n_gGm6kiwi7aDAl-uCmWA=="
 INFLUXDB_ORG = "MotorcycleMaintenance"
 INFLUXDB_BUCKET = "MotorcycleOBDData"
 
-# Connect to InfluxDB
-client = InfluxDBClient(
-    url=INFLUXDB_URL,
-    token=INFLUXDB_TOKEN,
-    org=INFLUXDB_ORG
-)
+client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
 query_api = client.query_api()
 
-def query_mean(command, time_range, motorcycle_id):
+FEATURES = [
+    "rpm",
+    "engine_load",
+    "throttle_pos",
+    "long_fuel_trim_1",
+    "coolant_temp",
+    "elm_voltage"
+]
+
+def query_aggregated_report(time_range, motorcycle_id):
+    fields_filter = " or ".join([f'r["_field"] == "{f}"' for f in FEATURES])
+    keep_columns = ', '.join([f'"{f}"' for f in ["_time"] + FEATURES])
+
     query = f'''
     from(bucket: "{INFLUXDB_BUCKET}")
       |> range(start: {time_range})
       |> filter(fn: (r) => r["_measurement"] == "obd_data")
       |> filter(fn: (r) => r["motorcycle_id"] == "{motorcycle_id}")
-      |> filter(fn: (r) => r["_field"] == "value")
-      |> filter(fn: (r) => r["command"] == "{command}")
-      |> mean()
+      |> filter(fn: (r) => {fields_filter})
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> keep(columns: [{keep_columns}])
     '''
-    result = query_api.query(query)
-    for table in result:
-        for record in table.records:
-            return round(record.get_value(), 2)
-    return None
 
-@app.route("/reports/daily", methods=["GET"])
+    result = query_api.query_data_frame(query)
+
+    # If empty, return None for each field
+    if result.empty:
+        return {f: None for f in FEATURES}
+
+    # Drop metadata columns and calculate mean per feature
+    try:
+        means = result[FEATURES].mean(numeric_only=True).round(2).to_dict()
+        return means
+    except Exception as e:
+        print(f"[ERROR] Failed to compute means: {e}")
+        return {f: None for f in FEATURES}
+
+@report_api.route("/reports/daily", methods=["GET"])
 def daily_report():
     motorcycle_id = request.args.get("motorcycle_id", "unknown")
-    report = {
-        "avg_rpm": query_mean("RPM", "-24h", motorcycle_id),
-        "avg_speed": query_mean("SPEED", "-24h", motorcycle_id),
-        "avg_temp": query_mean("COOLANT_TEMP", "-24h", motorcycle_id),
-        "avg_voltage": query_mean("ELM_VOLTAGE", "-24h", motorcycle_id)
-    }
+    if motorcycle_id == "unknown":
+        return jsonify({"error": "Missing motorcycle_id"}), 400
+    report = query_aggregated_report("-24h", motorcycle_id)
     return jsonify(report)
 
-@app.route("/reports/weekly", methods=["GET"])
+@report_api.route("/reports/weekly", methods=["GET"])
 def weekly_report():
     motorcycle_id = request.args.get("motorcycle_id", "unknown")
-    report = {
-        "avg_rpm": query_mean("RPM", "-7d", motorcycle_id),
-        "avg_speed": query_mean("SPEED", "-7d", motorcycle_id),
-        "avg_temp": query_mean("COOLANT_TEMP", "-7d", motorcycle_id),
-        "avg_voltage": query_mean("ELM_VOLTAGE", "-7d", motorcycle_id)
-    }
+    if motorcycle_id == "unknown":
+        return jsonify({"error": "Missing motorcycle_id"}), 400
+    report = query_aggregated_report("-7d", motorcycle_id)
     return jsonify(report)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)

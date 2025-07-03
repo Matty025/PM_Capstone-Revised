@@ -41,7 +41,7 @@ function PredictiveMaintenance() {
   useEffect(() => {
     const selected = JSON.parse(localStorage.getItem("selectedMotorcycle"));
     if (!selected) {
-      alert("No motorcycle selected.");
+      toast.error("❌ No motorcycle selected.");
       navigate("/signup-motorcycle");
       return;
     }
@@ -61,7 +61,7 @@ function PredictiveMaintenance() {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to load data");
+      toast.error("❌ Failed to load data.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -144,7 +144,7 @@ useEffect(() => {
 
 const saveRecentDataAsCSV = () => {
   if (!rows.length) {
-    alert("No data available to export.");
+    toast.warning("⚠️ No data available to export.");
     return;
   }
 
@@ -173,7 +173,7 @@ const saveRecentDataAsCSV = () => {
   const brand = selected?.brand;
 
   if (!motorcycle_id || !brand) {
-    alert("Missing motorcycle info.");
+    toast.warning("⚠️ Missing motorcycle info.");
     return;
   }
 
@@ -183,17 +183,17 @@ const saveRecentDataAsCSV = () => {
       brand,
     });
 
-    alert("Model trained successfully!");
+    toast.success("✅ Model trained successfully!");
     console.log(res.data.message);
   } catch (err) {
     console.error(err);
-    alert("Training failed. Check server logs.");
+    toast.error("❌ Training failed. Check server logs.");
   }
 };
 
 const exportPDF = () => {
   const input = document.getElementById("analysis-report");
-  if (!input) return alert("No analysis report found to export.");
+  if (!input) return toast.error("❌ No analysis report found to export.");
 
   html2canvas(input, { scale: 2 }).then((canvas) => {
     const imgData = canvas.toDataURL("image/png");
@@ -307,8 +307,6 @@ return (
       <button onClick={() => navigate("/dashboard")}>Dashboard</button>
       <button onClick={() => navigate("/Reports")}>Reports</button>
       <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
-      <button onClick={() => navigate("/alerts")}>Alerts</button>
-      <button onClick={() => navigate("/Settings")}>Settings</button>
       <button onClick={() => {
         localStorage.clear();
         navigate("/");

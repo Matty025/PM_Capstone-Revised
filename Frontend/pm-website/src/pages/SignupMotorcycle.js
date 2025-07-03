@@ -25,15 +25,10 @@ function SignupMotorcycle() {
     Kawasaki: ["Rouser NS125 FI", "Ninja 250", "Rouser NS200 FI", "Brusky i125"],
   };
 
-  useEffect(() => {
+  // 🔁 Refactor to make reusable
+  const fetchMotorcycles = () => {
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
-
-    if (!userId || !token) {
-      toast.error("Session expired. Please log in again.");
-      navigate("/login");
-      return;
-    }
 
     fetch(`http://localhost:3001/get-motorcycles?userId=${userId}`, {
       method: "GET",
@@ -47,11 +42,23 @@ function SignupMotorcycle() {
         setMotorcycles(data.motorcycles || []);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching motorcycles:", err);
+      .catch(() => {
         toast.error("Failed to load motorcycles.");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    const token = localStorage.getItem("token");
+
+    if (!userId || !token) {
+      toast.error("Session expired. Please log in again.");
+      navigate("/login");
+      return;
+    }
+
+    fetchMotorcycles();
   }, [navigate]);
 
   const handleSelectMotorcycle = (motorcycle) => {
@@ -106,13 +113,20 @@ function SignupMotorcycle() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data?.message || "✅ Signup successful!");
-        setTimeout(() => navigate("/dashboard"), 2000);
+        toast.success(data?.message || "✅ Motorcycle registered!");
+
+        // Optional: Store newly registered motorcycle if backend returns it
+        if (data.motorcycle) {
+          localStorage.setItem("selectedMotorcycle", JSON.stringify(data.motorcycle));
+          setTimeout(() => navigate("/dashboard"), 2000);
+        } else {
+          fetchMotorcycles();
+          setRegisterNew(false);
+        }
       } else {
         toast.error(data?.error || "❌ Signup failed. Please try again.");
       }
     } catch (error) {
-      console.error("Signup Motorcycle Error:", error);
       toast.error("🚫 Server error. Please try again.");
     }
   };

@@ -15,8 +15,12 @@ import joblib
 from anomaly_model   import detect_anomalies
 from influx_query    import get_recent_data   # <-- your cleaned‑data helper
 
+from report_api import report_api  # 👈 import your Blueprint
+
+
 app = Flask(__name__)
 CORS(app)  # Allow CORS for frontend access
+app.register_blueprint(report_api)  # 👈 attach /reports/daily and /weekly routes
 
 # MQTT broker settings
 MQTT_BROKER = "broker.hivemq.com"
@@ -279,6 +283,8 @@ def predict_from_csv():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

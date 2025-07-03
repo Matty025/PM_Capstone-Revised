@@ -80,9 +80,7 @@ function Profile() {
         <button onClick={() => navigate("/dashboard")}>Dashboard</button>
         <button onClick={() => navigate("/reports")}>Reports</button>
         <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
-        <button onClick={() => navigate("/alerts")}>Alerts</button>
-        <button onClick={() => navigate("/settings")}>Settings</button>
-        <button onClick={handleLogout}>Logout</button>
+          <button onClick={handleLogout}>Logout</button>
       </div>
 
       {sidebarOpen && (

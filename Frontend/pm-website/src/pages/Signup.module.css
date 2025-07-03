@@ -1,134 +1,111 @@
-/* SignupPersonal.css */
-
-/* Background Styling */
+/* ─────────────── Container with Gradient Background ─────────────── */
 .signupContainer {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: url("https://png.pngtree.com/thumb_back/fh260/background/20241224/pngtree-motorbike-riders-riding-motorcycle-at-sunset-road-image_16856468.jpg") 
-  no-repeat center center/cover;
+  background: linear-gradient(135deg, #2b1055, #7597de);
   padding: 20px;
-}
-
-/* Signup Box - Glassmorphism Effect */
-.signupBox {
-  background: rgba(255, 255, 255, 0.25); /* Transparent effect */
-  backdrop-filter: blur(12px);
-  padding: 40px;
-  width: 100%;
-  max-width: 520px;
-  min-height: 650px;
-  text-align: center;
-  border-radius: 15px;
-  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
-/* Heading Style */
-h2 {
-  margin-bottom: 25px;
-  font-size: 30px;
-  color: white;
-  font-weight: bold;
+/* ─────────────── Glassmorphic Signup Box ─────────────── */
+.signupBox {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 450px;
+  width: 100%;
+  color: #f5f5f5;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  text-align: center;
 }
 
-/* Input Fields */
-/* Input Fields */
+/* ─────────────── Input Fields ─────────────── */
 .input {
   width: 100%;
-  padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 8px;
-  font-size: 16px;
-  box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  padding: 14px;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 15px;
   outline: none;
-  transition: all 0.3s ease;
-  margin-bottom: 20px;
+  transition: 0.3s ease-in-out;
+  backdrop-filter: blur(5px);
 }
 
-/* Placeholder Text */
 .input::placeholder {
-  color: white;
-  opacity: 1; /* Ensures full opacity in Firefox */
+  color: rgba(255, 255, 255, 0.7);
 }
 
-/* Focus Effect */
 .input:focus {
-  border-color: #00aaff;
-  box-shadow: 0px 0px 10px rgba(0, 170, 255, 0.7);
+  border-color: #a0c4ff;
+  box-shadow: 0 0 8px #a0c4ff;
 }
 
-/* Signup Button */
+/* ─────────────── Signup Button ─────────────── */
 .button {
   width: 100%;
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(135deg, #5f72be, #9921e8);
   color: white;
-  padding: 16px;
+  padding: 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 15px;
   cursor: pointer;
-  font-size: 18px;
-  font-weight: bold;
-  margin-top: 20px;
   transition: all 0.3s ease;
 }
 
-/* Button Hover Effect */
 .button:hover {
-  background: linear-gradient(135deg, #0056b3, #003f8c);
+  background: linear-gradient(135deg, #4a5abf, #7b1fd9);
   transform: scale(1.05);
 }
 
-/* Checkbox Styling */
-.checkboxContainer {
-  margin-top: 25px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.checkboxContainer input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: #007bff;
-}
-
-.checkboxContainer label {
-  font-size: 16px;
-  cursor: pointer;
-  color: white;
-}
-
-/* Footer Links */
-.footerLinks {
-  margin-top: 25px;
-  font-size: 16px;
-}
-
-.footerLinks a {
-  color: #00aaff;
-  text-decoration: none;
+/* ─────────────── Headings ─────────────── */
+.signupBox h2 {
+  margin-bottom: 25px;
+  font-size: 28px;
   font-weight: bold;
-  transition: color 0.3s ease;
+  color: #ffffff;
 }
 
-.footerLinks a:hover {
-  text-decoration: underline;
-  color: #0056b3;
-}
-
-/* Responsive Adjustments */
+/* ─────────────── Responsive ─────────────── */
 @media (max-width: 480px) {
   .signupBox {
-    width: 95%;
-    padding: 35px;
-    min-height: 700px;
+    padding: 30px 20px;
+    max-width: 95%;
   }
+
+  .input, .button {
+    font-size: 14px;
+  }
+
+  .signupBox h2 {
+    font-size: 22px;
+  }
+}
+.cancelButton {
+  width: 100%;
+  background-color: transparent;
+  color: #f5f5f5;
+  padding: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 10px;
+  font-size: 16px;
+  margin-top: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: #a0c4ff;
 }

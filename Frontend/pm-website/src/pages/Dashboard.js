@@ -14,6 +14,9 @@
     Legend,
   } from "chart.js";
   import "./Dashboard.css";
+// 🔁 Place this with other imports
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
   ChartJS.register(
     CategoryScale,
@@ -143,23 +146,66 @@
       };
     }, [motorcycle, updateChartData]);
 
-    const handleStartOBD = async () => {
-      try {
-        await axios.post("http://localhost:5000/start-obd", {
-          motorcycle_id: motorcycle?.id,
-        });
-      } catch (error) {
-        console.error("Start OBD error:", error);
-      }
-    };
+const handleStartOBD = async () => {
+  toast.info("🔄 Starting OBD connection...");
+  try {
+    const res = await axios.post("http://localhost:5000/start-obd", {
+      motorcycle_id: motorcycle?.id,
+    });
 
-    const handleStopOBD = async () => {
-      try {
-        await axios.get("http://localhost:5000/stop-obd");
-      } catch (error) {
-        console.error("Stop OBD error:", error);
+    const msg = res.data?.message || "";
+
+    if (res.status === 200) {
+      if (msg.includes("already running")) {
+        toast.success("✅ OBD is already running.");
+      } else if (msg.includes("started")) {
+        toast.success("✅ OBD started successfully!");
+      } else {
+        toast.info("ℹ️ " + msg);
       }
-    };
+    } else {
+      toast.warn("⚠️ Unexpected response. Retrying...");
+
+      // Optional retry logic
+      setTimeout(async () => {
+        try {
+          const retryRes = await axios.post("http://localhost:5000/start-obd", {
+            motorcycle_id: motorcycle?.id,
+          });
+          const retryMsg = retryRes.data?.message || "";
+          if (retryRes.status === 200) {
+            toast.success("✅ Retry success: " + retryMsg);
+          } else {
+            toast.error("❌ Retry failed.");
+          }
+        } catch {
+          toast.error("🚫 Retry failed. Backend unreachable.");
+        }
+      }, 2000);
+    }
+  } catch (err) {
+    console.error("Start OBD error:", err);
+    toast.error("❌ Failed to connect to backend.");
+  }
+};
+
+const handleStopOBD = async () => {
+  toast.info("🛑 Stopping OBD connection...");
+  try {
+    const res = await axios.get("http://localhost:5000/stop-obd");
+    const msg = res.data?.message || "";
+
+    if (msg.includes("stopped")) {
+      toast.success("✅ OBD stopped successfully.");
+    } else {
+      toast.info("ℹ️ " + msg); // e.g., "No running OBD data collection process"
+    }
+  } catch (err) {
+    console.error("Stop OBD error:", err);
+    toast.error("❌ Could not stop OBD. Backend error.");
+  }
+};
+
 
     const handleLogout = () => {
       localStorage.clear();
@@ -217,6 +263,7 @@ const renderChart = (label, key) => {
 return (
   
 <div className="dashboardContainer">
+<ToastContainer position="top-center" />
 
 
         <button
@@ -243,8 +290,6 @@ return (
           <button onClick={() => navigate("/dashboard")}>Dashboard</button>
           <button onClick={() => navigate("/Reports")}>Reports</button>
           <button onClick={() => navigate("/predictivemaintenance")}>Preventive Maintenance</button>
-          <button onClick={() => navigate("/alerts")}>Alerts</button>
-          <button onClick={() => navigate("/Settings")}>Settings</button>
           <button onClick={handleLogout}>Logout</button>
         </div>
 
