@@ -8,14 +8,28 @@ function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const validateEmail = (email) => {
+    // Basic email pattern
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email);
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      toast.warn("⚠️ Please enter your credentials");
+      toast.warn("Please enter both email and password.");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      toast.warn("Please enter a valid email address.");
       return;
     }
 
     try {
+      setLoading(true);
+
       const response = await fetch("http://localhost:3001/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -24,24 +38,22 @@ function Login() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        if (data.userId) {
-          localStorage.setItem("userId", data.userId);
-          localStorage.setItem("token", data.token);
+      if (response.ok && data.userId) {
+        localStorage.setItem("userId", data.userId);
+        localStorage.setItem("token", data.token);
 
-          toast.success("✅ Login successful!", { autoClose: 2000 });
+        toast.success("Login successful!", { autoClose: 2000 });
 
-          setTimeout(() => {
-            navigate("/signup-motorcycle");
-          }, 2000);
-        } else {
-          toast.error("Unexpected server response. Please try again.");
-        }
+        setTimeout(() => {
+          navigate("/signup-motorcycle");
+        }, 2000);
       } else {
-        toast.error(data.error || "Login failed. Please try again.");
+        toast.error(data.error || "Login failed. Please check your credentials.");
       }
     } catch (err) {
-      toast.error("🚫 Error connecting to server. Please try again.");
+      toast.error("🚫 Error connecting to the server. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,7 +86,9 @@ function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <button onClick={handleLogin}>Login</button>
+          <button onClick={handleLogin} disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
 
           <p>
             Don't have an account? <Link to="/signup-personal">Sign up</Link>

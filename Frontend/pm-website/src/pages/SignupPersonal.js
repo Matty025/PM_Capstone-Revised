@@ -20,37 +20,42 @@ function SignupPersonal() {
     setUserData({ ...userData, [e.target.name]: e.target.value });
   };
 
+  const isValidEmail = (email) => {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email);
+  };
+
   const handleSignup = async () => {
-    // ✅ 1. Check for empty fields
+    // 1. Check for empty fields
     for (const [key, value] of Object.entries(userData)) {
       if (!value.trim()) {
-        toast.error("❌ All fields are required.");
+        toast.error("All fields are required.");
         return;
       }
     }
 
-    // ✅ 2. Check email format
-    if (!userData.email.toLowerCase().endsWith("@gmail.com")) {
-      toast.error("❌ Email must be a Gmail address.");
+    // 2. Validate email format
+    if (!isValidEmail(userData.email)) {
+      toast.error("Email must be a valid email address.");
       return;
     }
 
-    // ✅ 3. Check password length
+    // 3. Password length check
     if (userData.password.length < 6) {
-      toast.error("❌ Password must be at least 6 characters.");
+      toast.error("Password must be at least 6 characters.");
       return;
     }
 
-    // ✅ 4. Check password match
+    // 4. Password match check
     if (userData.password !== userData.confirmPassword) {
-      toast.error("❌ Passwords do not match!");
+      toast.error("Passwords do not match.");
       return;
     }
 
-    // ✅ 5. Check phone format (Philippines format, starts with 09 and is 11 digits)
+    // 5. Validate phone number format (Philippines)
     const phoneRegex = /^09\d{9}$/;
     if (!phoneRegex.test(userData.phone)) {
-      toast.error("❌ Phone must start with 09 and be 11 digits.");
+      toast.error("Phone must start with 09 and be 11 digits.");
       return;
     }
 
@@ -66,7 +71,7 @@ function SignupPersonal() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data.message || "✅ Signup successful!", {
+        toast.success(data.message || "Signup successful!", {
           onClose: () => navigate("/login"),
           autoClose: 2000,
         });
@@ -74,7 +79,7 @@ function SignupPersonal() {
         toast.error(data.error || "Signup failed.");
       }
     } catch (error) {
-      console.error("❌ Signup Error:", error);
+      console.error("Signup Error:", error);
       toast.error("Server error. Please try again.");
     }
   };
@@ -105,7 +110,7 @@ function SignupPersonal() {
             className={styles.input}
             type="email"
             name="email"
-            placeholder="Email (e.g., example@gmail.com)"
+            placeholder="Email"
             required
             onChange={handleChange}
           />
@@ -113,7 +118,7 @@ function SignupPersonal() {
             className={styles.input}
             type="tel"
             name="phone"
-            placeholder="Phone Number (e.g., 09xxxxxxxxx)"
+            placeholder="Phone Number (e.g., 09XXXXXXXXX)"
             required
             onChange={handleChange}
           />

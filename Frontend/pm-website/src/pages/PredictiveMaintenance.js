@@ -110,7 +110,7 @@ useEffect(() => {
 
       setAnalysis(data);
       setRows([]);
-      toast.success("✅ Analysis complete using uploaded file.");
+      toast.success(" Analysis complete using uploaded file.");
 } else {
   setUploadedFile(null);
   setUseUploadedFile(false);

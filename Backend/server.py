@@ -49,7 +49,6 @@ def on_message(client, userdata, msg):
     global latest_obd_data
     try:
         latest_obd_data = json.loads(msg.payload.decode("utf-8"))
-        # Uncomment to debug:
         # print(f"📡 MQTT Received: {latest_obd_data}")
     except Exception as e:
         print(f"❌ MQTT message decode error: {e}")

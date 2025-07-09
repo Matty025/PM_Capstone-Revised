@@ -157,14 +157,14 @@ const handleStartOBD = async () => {
 
     if (res.status === 200) {
       if (msg.includes("already running")) {
-        toast.success("✅ OBD is already running.");
+        toast.success("OBD is already running.");
       } else if (msg.includes("started")) {
-        toast.success("✅ OBD started successfully!");
+        toast.success("OBD started successfully!");
       } else {
         toast.info("ℹ️ " + msg);
       }
     } else {
-      toast.warn("⚠️ Unexpected response. Retrying...");
+      toast.warn("Unexpected response. Retrying...");
 
       // Optional retry logic
       setTimeout(async () => {
@@ -174,18 +174,18 @@ const handleStartOBD = async () => {
           });
           const retryMsg = retryRes.data?.message || "";
           if (retryRes.status === 200) {
-            toast.success("✅ Retry success: " + retryMsg);
+            toast.success("Retry success: " + retryMsg);
           } else {
-            toast.error("❌ Retry failed.");
+            toast.error("Retry failed.");
           }
         } catch {
-          toast.error("🚫 Retry failed. Backend unreachable.");
+          toast.error("Retry failed. Backend unreachable.");
         }
       }, 2000);
     }
   } catch (err) {
     console.error("Start OBD error:", err);
-    toast.error("❌ Failed to connect to backend.");
+    toast.error("Failed to connect to backend.");
   }
 };
 
@@ -196,13 +196,13 @@ const handleStopOBD = async () => {
     const msg = res.data?.message || "";
 
     if (msg.includes("stopped")) {
-      toast.success("✅ OBD stopped successfully.");
+      toast.success("OBD stopped successfully.");
     } else {
       toast.info("ℹ️ " + msg); // e.g., "No running OBD data collection process"
     }
   } catch (err) {
     console.error("Stop OBD error:", err);
-    toast.error("❌ Could not stop OBD. Backend error.");
+    toast.error("Could not stop OBD. Backend error.");
   }
 };
 
@@ -294,7 +294,10 @@ return (
         </div>
 
         <div className="dashboardContent">
-          <h1>OBD Real-Time Dashboard</h1>
+<div className="dashboardHeader">
+  <h1>On-Board Diagnostic (OBD) Dashboard</h1>
+  <p className="subtitle">Real-time engine performance monitoring</p>
+</div>
 
           <div className="buttonGroup">
             <button onClick={handleStartOBD}>Start OBD</button>

@@ -230,53 +230,6 @@
     border-radius: 4px;
   }
 
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .dashboardContent {
-      padding: 40px 20px 20px 20px;
-    }
-
-    .buttonGroup {
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .buttonGroup button {
-      width: 100%;
-    }
-
-    .currentValues {
-      justify-content: center;
-    }
-
-    .valueCard {
-      max-width: 100%;
-    }
-
-    .chartGrid {
-      grid-template-columns: 1fr;
-    }
-
-    .sidebar {
-      width: 220px;
-    }
-
-    .sidebar.open ~ .dashboardContent {
-      margin-left: 220px;
-    }
-
-    @media (max-width: 1024px) {
-  .chartGrid {
-    grid-template-columns: repeat(2, 1fr); /* 2 per row on tablets */
-  }
-}
-
-@media (max-width: 640px) {
-  .chartGrid {
-    grid-template-columns: 1fr; /* 1 per row on phones */
-  }
-}
-  }
 
   /* Profile */
   .profileBtn {
@@ -303,12 +256,14 @@
     border: 2px solid #4caf50;
   }
 
-  .profileLabel {
+  .profileBtn:hover .profileLabel 
+ {
     color: #ffffff;
     margin-top: 8px;
     font-size: 16px;
     font-weight: 600;
   }
+  
 /* Connected message */
 .connectedBanner {
   background-color: #d4edda;
@@ -343,6 +298,69 @@
   height: 60px;
   animation: spin 1s linear infinite;
   margin-bottom: 10px;
+}
+
+.dashboardHeader h1 {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 16px;
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+
+ @media (max-width: 768px) {
+  .dashboardContent {
+    padding: 40px 20px 20px 20px;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .buttonGroup button {
+    width: 100%;
+  }
+
+  .currentValues {
+    justify-content: center;
+  }
+
+  .valueCard {
+    max-width: 100%;
+  }
+
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    width: 220px;
+  }
+
+  .sidebar.open ~ .dashboardContent {
+    margin-left: 220px;
+  }
+}
+
+/*Place these OUTSIDE the above media query */
+@media (max-width: 1024px) {
+  .chartGrid {
+    grid-template-columns: repeat(2, 1fr); /* 2 per row on tablets */
+  }
+}
+
+@media (max-width: 640px) {
+  .chartGrid {
+    grid-template-columns: 1fr; /* 1 per row on phones */
+  }
 }
 
 @keyframes spin {

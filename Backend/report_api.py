@@ -49,7 +49,7 @@ def query_aggregated_report(time_range, motorcycle_id):
     except Exception as e:
         print(f"[ERROR] Failed to compute means: {e}")
         return {f: None for f in FEATURES}
-
+    
 @report_api.route("/reports/daily", methods=["GET"])
 def daily_report():
     motorcycle_id = request.args.get("motorcycle_id", "unknown")

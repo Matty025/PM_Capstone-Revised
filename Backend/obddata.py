@@ -58,7 +58,7 @@ def write_to_influxdb(obd_data, motorcycle_id):
     write_api.write(bucket=INFLUXDB_BUCKET, record=point)
     print(f"[InfluxDB] Wrote: {obd_data}")
 
-port = "COM4"  # Change this as needed
+port = "COM3"  # Change this as needed
 print(f"Attempting to connect to OBD-II device on {port}...")
 
 try:
