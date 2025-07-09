@@ -27,12 +27,13 @@ function SignupPersonal() {
 
   const handleSignup = async () => {
     // 1. Check for empty fields
-    for (const [key, value] of Object.entries(userData)) {
-      if (!value.trim()) {
-        toast.error("All fields are required.");
-        return;
-      }
-    }
+for (const [key, value] of Object.entries(userData)) {
+  if (!value.trim()) {
+    toast.error(`${key} is required.`);
+    return;
+  }
+}
+
 
     // 2. Validate email format
     if (!isValidEmail(userData.email)) {
