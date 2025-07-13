@@ -116,7 +116,7 @@ useEffect(() => {
   setUseUploadedFile(false);
   setAnalysis(null); // ✅ <--- for clearing the csv and use the live data
 
-  toast.info("📡 Using latest InfluxDB sensor data for analysis...");
+  toast.info("📡 Using latest sensors data for analysis...");
 
   const { data } = await axios.post("http://localhost:5000/predict", {
     motorcycle_id: id,
@@ -136,7 +136,7 @@ useEffect(() => {
 
   } catch (err) {
     console.error("❌ Prediction failed:", err);
-    toast.error("❌ Prediction failed. See console for details.");
+    toast.error("❌ Prediction failed.");
   } finally {
     setLoading(false);
   }
@@ -187,7 +187,7 @@ const saveRecentDataAsCSV = () => {
     console.log(res.data.message);
   } catch (err) {
     console.error(err);
-    toast.error("❌ Training failed. Check server logs.");
+    toast.error("❌ Training failed. Not enough Data");
   }
 };
 
@@ -315,7 +315,13 @@ return (
 
     <div className="dashboardContent space-y-6">
       <div className="toolbar">
-        <h2 className="toolbar-title">Preventive Maintenance</h2>
+
+<div className="section-header">
+  <h2 className="toolbar-title">Preventive Maintenance</h2>
+  <p className="subtitle">Please avoid revving or pulling the throttle while data is being collected to prevent false analysis.
+</p>
+</div>
+
         <div className="toolbar-group">
           <label className="toolbar-label">
             Last
@@ -420,46 +426,50 @@ return (
     <div id="analysis-report">
       <div className="sectionWrapper">
 
-        <h3 className="text-xl font-semibold mb-4 text-center">🧠 ML Analysis Summary</h3>
-<p className="text-xs italic text-gray-600 mt-3 text-center">
-  📊 <strong>Note:</strong> Bar and pie charts summarize <u>average sensor values</u>.  
-  See row-level anomalies below for detailed critical/warning readings.
+        <h3 className="text-xl font-semibold mb-4 text-center">🧠 Machine Learning Analysis Summary</h3>
+
+<div className="summarySection">
+<p className="text-sm italic text-gray-700 mt-4 text-center">
+  📊 <strong>Note:</strong> Bar and pie charts reflect <u>average sensor performance</u>, and Feature Health Cards summarize <u>individual feature status</u>.  
+  For in-depth details on abnormal readings, please scroll down to view <strong>row-level anomaly charts</strong>.
 </p>
 
-            <div className="flex gap-3 mb-6 justify-center">
-              <span className="statusChip normal">✅ Normal: {statusBreakdown?.normal}</span>
-              <span className="statusChip warning">⚠️ Warning: {statusBreakdown?.warning}</span>
-              <span className="statusChip critical">❗ Critical: {statusBreakdown?.critical}</span>
-            </div>
 
-<ResponsiveContainer width="100%" height={260}>
-  <PieChart>
-    <Pie
-      data={pieData}
-      cx="50%"
-      cy="50%"
-      innerRadius={50}
-      outerRadius={90}
-      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
-      labelLine={false}
-      dataKey="value"
-    >
-      {pieData.map((entry) => (
-        <Cell
-          key={entry.name}
-          fill={
-            entry.name === "Normal"
-              ? "#10b981" // Green
-              : entry.name === "Warning"
-              ? "#facc15" // Yellow
-              : "#ef4444" // Red
-          }
-        />
-      ))}
-    </Pie>
-    <Legend verticalAlign="bottom" iconType="circle" />
-  </PieChart>
-</ResponsiveContainer>
+  <div className="flex gap-3 mb-6 justify-center">
+    <span className="statusChip normal">Normal: {statusBreakdown?.normal}</span>
+    <span className="statusChip warning">Warning: {statusBreakdown?.warning}</span>
+    <span className="statusChip critical">Critical: {statusBreakdown?.critical}</span>
+  </div>
+</div>
+
+<ResponsiveContainer width="100%" height={300}>
+    <PieChart>
+      <Pie
+        data={pieData}
+        cx="50%"
+        cy="60%"
+        innerRadius={50}
+        outerRadius={90}
+        label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+        labelLine={false}
+        dataKey="value"
+      >
+        {pieData.map((entry) => (
+          <Cell
+            key={entry.name}
+            fill={
+              entry.name === "Normal"
+                ? "#10b981"
+                : entry.name === "Warning"
+                ? "#facc15"
+                : "#ef4444"
+            }
+          />
+        ))}
+      </Pie>
+      <Legend verticalAlign="bottom" iconType="circle" />
+    </PieChart>
+  </ResponsiveContainer>
 
 <ResponsiveContainer width="100%" height={300} className="mt-6">
   <BarChart
@@ -503,11 +513,16 @@ return (
     🔧 Feature Health Check
   </h4>
 
-  <p className="text-sm text-gray-600 text-center mb-4 max-w-xl mx-auto">
-    Each component's severity score is based on anomalies detected during analysis.
-    <br />
-    <strong>💡 The lower the score, the healthier the component.</strong>
-  </p>
+<p className="text-sm text-gray-600 text-center mb-4 max-w-xl mx-auto">
+  Each component's severity score is based on anomalies detected during analysis.
+  <br />
+  <strong>💡 The lower the score, the healthier the component.</strong>
+  <br />
+  <span className="text-xs text-red-600 italic">
+    🔴 A score of <strong>-1</strong> means the component reached the maximum threshold for anomalies (100% severity), indicating a critical issue.
+  </span>
+</p>
+
 
 <div className="feature-health-check-container">
   {analysis?.explanations?.map((item, i) => {

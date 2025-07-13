@@ -45,6 +45,23 @@
   color: #ffffff; /* deep gray */
 }
 
+.section-header {
+  margin-bottom: 24px;
+}
+
+.toolbar-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: var(--text-dark);
+}
+
+.toolbar-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 0;
+}
+
 
 .toolbar-group {
   display: flex;
@@ -153,6 +170,41 @@
 .csvUploadContainer input[type="checkbox"]:hover {
   transform: scale(1.1);
 }
+.summarySection {
+  margin-bottom: 1.5rem !important; /* reduce if too large */
+    margin-bottom: 0 !important;
+
+}
+
+
+.statusChip {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: inline-block;
+}
+
+.statusChip.normal {
+  background-color: #d1fae5;   /* soft green */
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.statusChip.warning {
+  background-color: #fef3c7;   /* soft yellow */
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.statusChip.critical {
+  background-color: #fee2e2;   /* soft red */
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
 
 /* Responsive layout tweak */
 @media (max-width: 640px) {

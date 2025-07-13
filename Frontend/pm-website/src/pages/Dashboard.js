@@ -159,7 +159,7 @@ const handleStartOBD = async () => {
       if (msg.includes("already running")) {
         toast.success("OBD is already running.");
       } else if (msg.includes("started")) {
-        toast.success("OBD started successfully!");
+        toast.success("OBD started successfully! Please wait 1-2 minutes");
       } else {
         toast.info("ℹ️ " + msg);
       }
@@ -185,7 +185,7 @@ const handleStartOBD = async () => {
     }
   } catch (err) {
     console.error("Start OBD error:", err);
-    toast.error("Failed to connect to backend.");
+    toast.error("Failed to connect to the device.");
   }
 };
 
@@ -202,7 +202,7 @@ const handleStopOBD = async () => {
     }
   } catch (err) {
     console.error("Stop OBD error:", err);
-    toast.error("Could not stop OBD. Backend error.");
+    toast.error("Could not stop OBD. ");
   }
 };
 
@@ -293,7 +293,7 @@ return (
           <button onClick={handleLogout}>Logout</button>
         </div>
 
-        <div className="dashboardContent">
+        <div className="dashboardContent" >
 <div className="dashboardHeader">
   <h1>On-Board Diagnostic (OBD) Dashboard</h1>
   <p className="subtitle">Real-time engine performance monitoring</p>
