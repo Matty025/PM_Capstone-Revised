@@ -5,7 +5,7 @@
       "coolant_temp": { "warning_min": 60, "warning_max": 80, "critical_min": 50, "critical_max": 90 },
       "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
       "throttle_pos": { "warning_min": 8, "warning_max": 15, "critical_min": 5, "critical_max": 18 },
-      "engine_load": { "warning_min": 15, "warning_max": 35, "critical_min": 10, "critical_max": 40 },
+"engine_load": { "warning_min": 19, "warning_max": 32, "critical_min": 10, "critical_max": 35 },
       "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
     },
     "sniper_155": {
@@ -13,7 +13,7 @@
       "coolant_temp": { "warning_min": 60, "warning_max": 85, "critical_min": 50, "critical_max": 95 },
       "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
       "throttle_pos": { "warning_min": 7, "warning_max": 14, "critical_min": 5, "critical_max": 18 },
-      "engine_load": { "warning_min": 10, "warning_max": 30, "critical_min": 5, "critical_max": 40 },
+"engine_load": { "warning_min": 19, "warning_max": 30, "critical_min": 10, "critical_max": 35 },
       "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
     }
   },
@@ -23,7 +23,7 @@
       "coolant_temp": { "warning_min": 60, "warning_max": 85, "critical_min": 50, "critical_max": 95 },
       "elm_voltage": { "critical_min": 12.0, "warning_min": 12.0, "warning_max": 14.9, "critical_max": 15.0 },
       "throttle_pos": { "warning_min": 8, "warning_max": 15, "critical_min": 5, "critical_max": 18 },
-      "engine_load": { "warning_min": 10, "warning_max": 30, "critical_min": 5, "critical_max": 40 },
+"engine_load": { "warning_min": 19, "warning_max": 28, "critical_min": 15, "critical_max": 33 },
       "long_fuel_trim_1": { "warning_min": -6, "warning_max": 6, "critical_min": -7, "critical_max": 7 }
     }
   }
