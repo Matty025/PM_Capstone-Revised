@@ -224,7 +224,13 @@ const METRIC_LABELS = {
         <h2 className="reportTitle">On-Board Diagnostic Engine Report</h2>
 <p className="reportSubtitle">
   {motorcycle.brand} {motorcycle.model} | {motorcycle.plate_number}
+  <br />
+<span style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+  Machine Learning Model: Motorcycle ID {motorcycle.id}
+</span>
+
 </p>
+
 
         <div className="reportSections" id="report-content">
           

@@ -23,6 +23,7 @@ import {
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import RowAnomalyLineChart from "./RowAnomalyLineChart";
+import normalRangesData from "./normal_ranges.json";
 
 
 import "./PredictiveMaintenance.css";
@@ -529,53 +530,120 @@ return (
     const emoji = statusEmoji[item.status] || "⚪";
     const textColor = statusColor[item.status];
     const barColor = progressColor[item.status];
-    const displayName = featureDisplayNames[item.feature] || item.feature;
+
+    const selected = JSON.parse(localStorage.getItem("selectedMotorcycle")) || {};
+    const brandKey = selected.brand?.toLowerCase().replace(/\s+/g, "_");
+    const modelKey = selected.model?.toLowerCase().replace(/\s+/g, "_");
+    const feature = item.feature;
+
+    const displayName = featureDisplayNames[feature] || feature;
+
+    const normalRange = normalRangesData?.[brandKey]?.[modelKey]?.[feature];
+
+    // Determine unit or symbol per feature
+    const getUnit = (feature) => {
+      if (feature.includes("load") || feature.includes("throttle")) return "%";
+      if (feature.includes("fuel_trim"));
+      if (feature.includes("temp")) return "°C";
+      if (feature.includes("voltage")) return "V";
+      return "";
+    };
+
+    const formatRange = () => {
+      if (!normalRange) return "";
+
+      const unit = getUnit(feature);
+      const min = normalRange.warning_min;
+      const max = normalRange.warning_max;
+
+      // Handle +/– sign for fuel trim
+      const range =
+        feature.includes("fuel_trim") && min < 0
+          ? `${min > 0 ? "+" : ""}${min}${unit} to ${max > 0 ? "+" : ""}${max}${unit}`
+          : `${min}${unit} to ${max}${unit}`;
+
+      return ` (Normal: ${range})`;
+    };
 
     return (
-      <div
-        key={i}
-        className={`feature-card ${textColor}`}
-        style={{ minHeight: "110px" }}
-      >
+      <div key={i} className={`feature-card ${textColor}`} style={{ minHeight: "110px" }}>
         <h4 className="feature-title">
           {emoji} {displayName}
+          <br />
+          <span style={{ fontSize: "0.75em", color: "#000000ff" }}>
+            {formatRange()}
+          </span>
         </h4>
-        <p className="feature-score">
+
+        <p className="feature-score text-sm mt-1">
           Score: <strong>{item.severity_score}%</strong>
         </p>
-        <div className="progress-bar-bg">
+
+        <div className="progress-bar-bg mt-1">
           <div
             className="progress-bar-fill"
-            style={{ width: `${item.severity_score}%`, backgroundColor: barColor }}
+            style={{
+              width: `${item.severity_score}%`,
+              backgroundColor: barColor,
+            }}
           />
         </div>
-        <p className="feature-tip">{item.tip}</p>
+
+        <p className="feature-tip text-xs mt-2 italic text-gray-700">{item.tip}</p>
       </div>
     );
   })}
 </div>
 
 
+
+
 {analysis?.row_anomalies?.length > 0 && (
   <>
-<div className="centered-anomaly-summary">
-  <h4>🧪 Rows Anomaly Summary</h4>
-  <ul>
-    {Object.entries(getFeatureAnomalySummary(analysis.row_anomalies)).map(([feature, counts]) => (
-      <li key={feature}>
-        <strong>{featureDisplayNames[feature] || feature}:</strong>{" "}
-        {counts.warning} warning, {counts.critical} critical anomalies
-      </li>
-    ))}
-  </ul>
-  <p>
-    From {analysis.row_anomalies.length} anomalous rows analyzed
-  </p>
-</div>
+    <div className="centered-anomaly-summary enhanced-summary mb-6">
+      <h4 className="text-lg font-semibold mb-2 text-center">🧪 Rows Anomaly Summary</h4>
 
+      <p className="text-sm text-gray-600 text-center mb-1">
+        A total of <strong>{analysis.row_anomalies.length}</strong> rows were analyzed. These rows showed unusual sensor readings based on the trained machine learning model.
+      </p>
 
+      <p className="text-xs text-gray-500 italic text-center mb-4 max-w-2xl mx-auto">
+        An <strong>anomalous row</strong> means at least one sensor reading was detected as abnormal — either in the <span className="text-yellow-600 font-medium">warning</span> or <span className="text-red-600 font-medium">critical</span> range — which may indicate potential issues in engine behavior.
+      </p>
 
-    {/* Grid container for charts */}
+      <div className="anomaly-grid">
+        {Object.entries(getFeatureAnomalySummary(analysis.row_anomalies)).map(([feature, counts]) => {
+          const hasCritical = counts.critical > 0;
+          const hasWarning = counts.warning > 0;
+          const statusClass = hasCritical
+            ? "status-critical"
+            : hasWarning
+            ? "status-warning"
+            : "status-normal";
+
+          return (
+            <div key={feature} className={`anomaly-item ${statusClass}`}>
+              <div className="anomaly-feature-name">
+                {featureDisplayNames[feature] || feature}
+              </div>
+              <div className="anomaly-badges">
+                {hasWarning && (
+                  <span className="anomaly-badge warning-badge">
+                    {counts.warning} Warning
+                  </span>
+                )}
+                {hasCritical && (
+                  <span className="anomaly-badge critical-badge">
+                    {counts.critical} Critical
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
       <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="rpm" />
       <RowAnomalyLineChart rowAnomalies={analysis.row_anomalies} feature="elm_voltage" />
@@ -586,6 +654,9 @@ return (
     </div>
   </>
 )}
+
+
+
 
           </div>
 
